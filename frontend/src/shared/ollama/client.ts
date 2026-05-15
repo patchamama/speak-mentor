@@ -9,6 +9,40 @@ import {
   type TranslationResponse,
 } from './schemas'
 
+// ── Global serialization queue ────────────────────────────────────────────────
+// Only one Ollama request runs at a time; remaining requests wait in line.
+
+interface QueueItem {
+  run: () => Promise<string>
+  resolve: (value: string) => void
+  reject: (reason: unknown) => void
+}
+
+const _queue: QueueItem[] = []
+let _running = false
+
+function _drain() {
+  if (_running || _queue.length === 0) return
+  const item = _queue.shift()!
+  _running = true
+  item.run().then(item.resolve, item.reject).finally(() => {
+    _running = false
+    _drain()
+  })
+}
+
+function _enqueue(run: () => Promise<string>): Promise<string> {
+  return new Promise((resolve, reject) => {
+    _queue.push({ run, resolve, reject })
+    _drain()
+  })
+}
+
+export function getOllamaQueueLength(): number {
+  return _queue.length + (_running ? 1 : 0)
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getBaseUrl(config: OllamaConfig): string {
   return `${config.url}:${config.port}`
 }
@@ -24,7 +58,7 @@ export async function fetchOllamaModels(config: OllamaConfig): Promise<OllamaMod
   return data.models ?? []
 }
 
-export async function callOllama(
+async function _callOllamaDirect(
   config: OllamaConfig,
   prompt: BuiltPrompt,
   model: string,
@@ -46,6 +80,15 @@ export async function callOllama(
   }).json<{ message: { content: string } }>()
 
   return response.message.content
+}
+
+export function callOllama(
+  config: OllamaConfig,
+  prompt: BuiltPrompt,
+  model: string,
+  keepAlive: string | number = -1,
+): Promise<string> {
+  return _enqueue(() => _callOllamaDirect(config, prompt, model, keepAlive))
 }
 
 function resolvePositions(

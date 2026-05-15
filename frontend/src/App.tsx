@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { Toaster } from 'sonner'
 import { CorrectionContainer } from './features/correction/CorrectionContainer'
 import { TranslationContainer } from './features/translation/TranslationContainer'
+import { HistoryContainer } from './features/history/HistoryContainer'
 import { SettingsContainer } from './features/settings/SettingsContainer'
 import { cn } from './lib/utils'
 
-type Page = 'correction' | 'translation' | 'settings'
+type Page = 'correction' | 'translation' | 'history' | 'settings'
 
 const PAGE_LABELS: Record<Page, string> = {
   correction: 'Corrección',
   translation: 'Traducción',
+  history: 'Historial',
   settings: 'Configuración',
 }
 
@@ -21,7 +23,7 @@ export default function App() {
       <header className="border-b px-6 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Speak Mentor</h1>
         <nav className="flex items-center gap-1">
-          {(['correction', 'translation', 'settings'] as Page[]).map((p) => (
+          {(['correction', 'translation', 'history', 'settings'] as Page[]).map((p) => (
             <button
               key={p}
               onClick={() => setPage(p)}
@@ -39,6 +41,7 @@ export default function App() {
       <main className="container mx-auto px-6 py-8 max-w-5xl">
         {page === 'correction' && <CorrectionContainer />}
         {page === 'translation' && <TranslationContainer />}
+        {page === 'history' && <HistoryContainer />}
         {page === 'settings' && <SettingsContainer />}
       </main>
       <Toaster />

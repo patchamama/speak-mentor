@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { Toaster } from 'sonner'
 import { CorrectionContainer } from './features/correction/CorrectionContainer'
+import { TranslationContainer } from './features/translation/TranslationContainer'
 import { SettingsContainer } from './features/settings/SettingsContainer'
 import { cn } from './lib/utils'
 
-type Page = 'correction' | 'settings'
+type Page = 'correction' | 'translation' | 'settings'
+
+const PAGE_LABELS: Record<Page, string> = {
+  correction: 'Corrección',
+  translation: 'Traducción',
+  settings: 'Configuración',
+}
 
 export default function App() {
   const [page, setPage] = useState<Page>('correction')
@@ -14,7 +21,7 @@ export default function App() {
       <header className="border-b px-6 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Speak Mentor</h1>
         <nav className="flex items-center gap-1">
-          {(['correction', 'settings'] as Page[]).map((p) => (
+          {(['correction', 'translation', 'settings'] as Page[]).map((p) => (
             <button
               key={p}
               onClick={() => setPage(p)}
@@ -23,7 +30,7 @@ export default function App() {
                 page === p ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {p === 'correction' ? 'Corrección' : 'Configuración'}
+              {PAGE_LABELS[p]}
             </button>
           ))}
         </nav>
@@ -31,6 +38,7 @@ export default function App() {
       </header>
       <main className="container mx-auto px-6 py-8 max-w-5xl">
         {page === 'correction' && <CorrectionContainer />}
+        {page === 'translation' && <TranslationContainer />}
         {page === 'settings' && <SettingsContainer />}
       </main>
       <Toaster />

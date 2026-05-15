@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
+import { InputHistory } from '@/shared/ui/InputHistory'
+import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { cn } from '@/lib/utils'
 import type { CEFRLevel, Lang } from '@/shared/types'
 import type { TranslationResponse } from '@/shared/ollama/schemas'
@@ -34,6 +36,7 @@ export function TranslationView({
   const [targetLang, setTargetLang] = useState<Lang>('es')
   const [level, setLevel] = useState<CEFRLevel>('B1')
   const [showAlternatives, setShowAlternatives] = useState(false)
+  const { history, push, remove } = useInputHistory('speak-mentor-translation-history')
 
   const swap = useCallback(() => {
     setSourceLang(targetLang)
@@ -43,8 +46,9 @@ export function TranslationView({
   const handleSubmit = useCallback(() => {
     if (!text.trim()) return
     setShowAlternatives(false)
+    push(text)
     onTranslate(text, sourceLang, targetLang, level)
-  }, [text, sourceLang, targetLang, level, onTranslate])
+  }, [text, sourceLang, targetLang, level, onTranslate, push])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSubmit()
@@ -56,7 +60,14 @@ export function TranslationView({
     <div className="space-y-6">
       {/* Lang selector + level */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-semibold">Traducción</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">Traducción</h2>
+          <InputHistory
+            history={history}
+            onSelect={(entry) => setText(entry)}
+            onRemove={remove}
+          />
+        </div>
         <LevelSelector value={level} onChange={setLevel} />
       </div>
 

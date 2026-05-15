@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
+import { InputHistory } from '@/shared/ui/InputHistory'
+import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { ErrorHighlight, ERROR_COLORS_MAP } from './components/ErrorHighlight'
 import { ErrorPanel } from './components/ErrorPanel'
 import { TipsList } from './components/TipsList'
@@ -32,12 +34,14 @@ export function CorrectionView({
   const [text, setText] = useState('')
   const [level, setLevel] = useState<CEFRLevel>('B1')
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
+  const { history, push, remove } = useInputHistory('speak-mentor-correction-history')
 
   const handleSubmit = useCallback(() => {
     if (!text.trim()) return
     setActiveErrorIdx(null)
+    push(text)
     onCorrect(text, level)
-  }, [text, level, onCorrect])
+  }, [text, level, onCorrect, push])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSubmit()
@@ -50,7 +54,14 @@ export function CorrectionView({
       {/* Input area */}
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-lg font-semibold">Corrección</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Corrección</h2>
+            <InputHistory
+              history={history}
+              onSelect={(entry) => { setText(entry); setActiveErrorIdx(null) }}
+              onRemove={remove}
+            />
+          </div>
           <LevelSelector value={level} onChange={setLevel} />
         </div>
         <textarea

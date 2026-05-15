@@ -12,6 +12,55 @@ import {
 } from './hooks/useHistory'
 import type { CorrectionResponse } from '@/shared/ollama/schemas'
 
+function StatsPanel() {
+  const { data: byType, isError: byTypeErr, isLoading: byTypeLoading } = useStatsByType()
+  const { data: byLevel, isError: byLevelErr, isLoading: byLevelLoading } = useStatsByLevel()
+  const { data: timeline, isError: timelineErr, isLoading: timelineLoading } = useStatsTimeline()
+  const { data: topRules, isError: topRulesErr, isLoading: topRulesLoading } = useTopRules()
+
+  const anyError = byTypeErr || byLevelErr || timelineErr || topRulesErr
+  const anyLoading = byTypeLoading || byLevelLoading || timelineLoading || topRulesLoading
+
+  if (anyLoading) {
+    return <div className="flex justify-center p-12"><Spinner /></div>
+  }
+
+  if (anyError) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-2">
+        <p className="text-sm font-medium text-destructive">No se puede conectar con el backend</p>
+        <p className="text-xs text-muted-foreground">
+          Asegurate de que el servidor Flask esté corriendo en <code className="bg-muted px-1 rounded">localhost:5001</code>.
+        </p>
+        <pre className="text-xs text-muted-foreground mt-2">cd backend && flask --app wsgi:app run --port 5001</pre>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-lg border p-4 space-y-3">
+          <p className="text-sm font-medium">Errores por tipo (top 10)</p>
+          {byType && byType.length > 0 ? <ByTypeChart data={byType.slice(0, 10)} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún — guardá una sesión de corrección.</p>}
+        </div>
+        <div className="rounded-lg border p-4 space-y-3">
+          <p className="text-sm font-medium">Errores por nivel</p>
+          {byLevel && byLevel.length > 0 ? <ByLevelChart data={byLevel} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún.</p>}
+        </div>
+      </div>
+      <div className="rounded-lg border p-4 space-y-3">
+        <p className="text-sm font-medium">Errores por día (últimos 30 días)</p>
+        {timeline && timeline.length > 0 ? <TimelineChart data={timeline} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún.</p>}
+      </div>
+      <div className="rounded-lg border p-4 space-y-3">
+        <p className="text-sm font-medium">Reglas más incumplidas (top 10)</p>
+        <TopRulesTable data={topRules ?? []} />
+      </div>
+    </div>
+  )
+}
+
 const MODE_FILTER_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'correction', label: 'Corrección' },
@@ -33,11 +82,6 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
   const { data, isLoading } = useSessionList(page, modeFilter || undefined)
   const { data: detail, isLoading: detailLoading } = useSessionDetail(selectedId)
   const { mutate: deleteSession, isPending: deleting } = useDeleteSession()
-
-  const { data: byType } = useStatsByType()
-  const { data: byLevel } = useStatsByLevel()
-  const { data: timeline } = useStatsTimeline()
-  const { data: topRules } = useTopRules()
 
   const handleExport = () => {
     const blob = new Blob([JSON.stringify(data?.sessions ?? [], null, 2)], { type: 'application/json' })
@@ -224,28 +268,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
       )}
 
       {tab === 'stats' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium">Errores por tipo (top 10)</p>
-              {byType && byType.length > 0 ? <ByTypeChart data={byType.slice(0, 10)} /> : <p className="text-sm text-muted-foreground italic">Sin datos.</p>}
-            </div>
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium">Errores por nivel</p>
-              {byLevel && byLevel.length > 0 ? <ByLevelChart data={byLevel} /> : <p className="text-sm text-muted-foreground italic">Sin datos.</p>}
-            </div>
-          </div>
-
-          <div className="rounded-lg border p-4 space-y-3">
-            <p className="text-sm font-medium">Errores por día (últimos 30 días)</p>
-            {timeline && timeline.length > 0 ? <TimelineChart data={timeline} /> : <p className="text-sm text-muted-foreground italic">Sin datos.</p>}
-          </div>
-
-          <div className="rounded-lg border p-4 space-y-3">
-            <p className="text-sm font-medium">Reglas más incumplidas (top 10)</p>
-            <TopRulesTable data={topRules ?? []} />
-          </div>
-        </div>
+        <StatsPanel />
       )}
     </div>
   )

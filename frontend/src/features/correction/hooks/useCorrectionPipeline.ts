@@ -87,10 +87,13 @@ export interface PassState<T> {
   elapsedMs: number | null
 }
 
+// Vocabulary and exercises accumulate across re-runs
 export interface PipelineState {
   correction: PassState<CorrectionResult>
   vocabulary: PassState<VocabularyResult>
+  vocabularyHistory: VocabularyResult[]
   exercises: PassState<ExercisesResult>
+  exercisesHistory: ExercisesResult[]
 }
 
 const initialPass = <T>(): PassState<T> => ({
@@ -103,7 +106,9 @@ const initialPass = <T>(): PassState<T> => ({
 const initialState = (): PipelineState => ({
   correction: initialPass(),
   vocabulary: initialPass(),
+  vocabularyHistory: [],
   exercises: initialPass(),
+  exercisesHistory: [],
 })
 
 export function useCorrectionPipeline() {
@@ -111,7 +116,10 @@ export function useCorrectionPipeline() {
   const [state, setState] = useState<PipelineState>(initialState())
 
   const updatePass = useCallback(
-    <K extends keyof PipelineState>(pass: K, update: Partial<PassState<PipelineState[K]['data']>>) => {
+    <K extends 'correction' | 'vocabulary' | 'exercises'>(
+      pass: K,
+      update: Partial<PassState<PipelineState[K]['data']>>,
+    ) => {
       setState((prev) => ({
         ...prev,
         [pass]: { ...prev[pass], ...update },
@@ -122,6 +130,79 @@ export function useCorrectionPipeline() {
 
   const reset = useCallback(() => setState(initialState()), [])
 
+  // ── Re-run a single optional pass ────────────────────────────────────────
+  const rerunVocabulary = useCallback(
+    async (correctionData: CorrectionResult, text: string, level: CEFRLevel, explanationLang: Lang = 'es') => {
+      updatePass('vocabulary', { status: 'running', error: null })
+      const t = Date.now()
+      try {
+        const built = buildPrompt({
+          mode: 'vocabulary',
+          originalText: text,
+          correctedText: correctionData.corrected,
+          level,
+          explanationLang,
+          systemOverride: prompts.vocabularySystem,
+          modelParams,
+        })
+        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
+        const data = VocabularyResponseSchema.parse(JSON.parse(rawStr))
+        setState((prev) => ({
+          ...prev,
+          vocabulary: { status: 'done', data, error: null, elapsedMs: Date.now() - t },
+          vocabularyHistory: [...prev.vocabularyHistory, data],
+        }))
+      } catch (err) {
+        updatePass('vocabulary', {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          elapsedMs: Date.now() - t,
+        })
+      }
+    },
+    [ollama, modelParams, prompts, updatePass],
+  )
+
+  const rerunExercises = useCallback(
+    async (correctionData: CorrectionResult, level: CEFRLevel, explanationLang: Lang = 'es') => {
+      if (correctionData.errors.length === 0) return
+      updatePass('exercises', { status: 'running', error: null })
+      const t = Date.now()
+      try {
+        const errorsForPrompt = correctionData.errors.map((e) => ({
+          type: e.type,
+          original: e.original,
+          correction: e.correction,
+          explanation: e.explanation,
+        }))
+        const built = buildPrompt({
+          mode: 'exercises',
+          correctedText: correctionData.corrected,
+          errors: errorsForPrompt,
+          level,
+          explanationLang,
+          systemOverride: prompts.exercisesSystem,
+          modelParams,
+        })
+        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
+        const data = ExercisesResponseSchema.parse(JSON.parse(rawStr))
+        setState((prev) => ({
+          ...prev,
+          exercises: { status: 'done', data, error: null, elapsedMs: Date.now() - t },
+          exercisesHistory: [...prev.exercisesHistory, data],
+        }))
+      } catch (err) {
+        updatePass('exercises', {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err),
+          elapsedMs: Date.now() - t,
+        })
+      }
+    },
+    [ollama, modelParams, prompts, updatePass],
+  )
+
+  // ── Full pipeline run ─────────────────────────────────────────────────────
   const run = useCallback(
     async (text: string, level: CEFRLevel, explanationLang: Lang = 'es', passesOverride?: CorrectionPassId[]) => {
       setState(initialState())
@@ -154,10 +235,10 @@ export function useCorrectionPipeline() {
           error: err instanceof Error ? err.message : String(err),
           elapsedMs: Date.now() - t0,
         })
-        return // abort pipeline on pass 1 failure
+        return
       }
 
-      // ── PASS 1.5: Verification of corrected text ──────────────────
+      // ── PASS 1.5: Verification ────────────────────────────────────
       try {
         const verifyBuilt = buildPrompt({ mode: 'verification', correctedText: correctionData.corrected, modelParams })
         const verifyRaw = await callOllama(ollama, verifyBuilt, ollama.model, ollama.keepAlive)
@@ -167,68 +248,20 @@ export function useCorrectionPipeline() {
           updatePass('correction', { data: correctionData })
         }
       } catch {
-        // verification is best-effort — don't abort the pipeline
+        // best-effort — don't abort
       }
 
-      // ── PASS 2: Vocabulary (optional) ─────────────────────────────
+      // ── PASS 2: Vocabulary ────────────────────────────────────────
       if (passes.includes('vocabulary') && correctionData) {
-        updatePass('vocabulary', { status: 'running' })
-        const t1 = Date.now()
-        try {
-          const built = buildPrompt({
-            mode: 'vocabulary',
-            originalText: text,
-            correctedText: correctionData.corrected,
-            level,
-            explanationLang,
-            systemOverride: prompts.vocabularySystem,
-            modelParams,
-          })
-          const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
-          const data = VocabularyResponseSchema.parse(JSON.parse(rawStr))
-          updatePass('vocabulary', { status: 'done', data, elapsedMs: Date.now() - t1 })
-        } catch (err) {
-          updatePass('vocabulary', {
-            status: 'error',
-            error: err instanceof Error ? err.message : String(err),
-            elapsedMs: Date.now() - t1,
-          })
-        }
+        await rerunVocabulary(correctionData, text, level, explanationLang)
       }
 
-      // ── PASS 3: Exercises (optional) ──────────────────────────────
+      // ── PASS 3: Exercises ─────────────────────────────────────────
       if (passes.includes('exercises') && correctionData && correctionData.errors.length > 0) {
-        updatePass('exercises', { status: 'running' })
-        const t2 = Date.now()
-        try {
-          const errorsForPrompt = correctionData.errors.map((e) => ({
-            type: e.type,
-            original: e.original,
-            correction: e.correction,
-            explanation: e.explanation,
-          }))
-          const built = buildPrompt({
-            mode: 'exercises',
-            correctedText: correctionData.corrected,
-            errors: errorsForPrompt,
-            level,
-            explanationLang,
-            systemOverride: prompts.exercisesSystem,
-            modelParams,
-          })
-          const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
-          const data = ExercisesResponseSchema.parse(JSON.parse(rawStr))
-          updatePass('exercises', { status: 'done', data, elapsedMs: Date.now() - t2 })
-        } catch (err) {
-          updatePass('exercises', {
-            status: 'error',
-            error: err instanceof Error ? err.message : String(err),
-            elapsedMs: Date.now() - t2,
-          })
-        }
+        await rerunExercises(correctionData, level, explanationLang)
       }
     },
-    [ollama, modelParams, prompts, pipeline, updatePass],
+    [ollama, modelParams, prompts, pipeline, updatePass, rerunVocabulary, rerunExercises],
   )
 
   const isRunning =
@@ -238,5 +271,5 @@ export function useCorrectionPipeline() {
 
   const activePasses = pipeline.passes as CorrectionPassId[]
 
-  return { state, run, reset, isRunning, activePasses }
+  return { state, run, reset, isRunning, activePasses, rerunVocabulary, rerunExercises }
 }

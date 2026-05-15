@@ -9,13 +9,12 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { useThemeStore } from './stores/themeStore'
 import { cn } from './lib/utils'
 
-type Page = 'correction' | 'translation' | 'common-errors' | 'history' | 'stats' | 'settings'
+type Page = 'correction' | 'translation' | 'common-errors' | 'stats' | 'settings'
 
 const PAGE_LABELS: Record<Page, string> = {
   correction: 'Corrección',
   translation: 'Traducción',
   'common-errors': 'Errores frecuentes',
-  history: 'Historial',
   stats: 'Estadísticas',
   settings: 'Configuración',
 }
@@ -29,7 +28,7 @@ export default function App() {
       <header className="border-b px-6 py-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Speak Mentor</h1>
         <nav className="flex items-center gap-1" role="navigation" aria-label="Navegación principal">
-          {(['correction', 'translation', 'common-errors', 'history', 'stats', 'settings'] as Page[]).map((p) => (
+          {(['correction', 'translation', 'common-errors', 'stats', 'settings'] as Page[]).map((p) => (
             <button
               key={p}
               onClick={() => setPage(p)}
@@ -58,8 +57,7 @@ export default function App() {
         <ErrorBoundary>
           <div hidden={page !== 'correction'}><CorrectionContainer /></div>
           <div hidden={page !== 'translation'}><TranslationContainer /></div>
-          <div hidden={page !== 'history'}><HistoryContainer /></div>
-          <div hidden={page !== 'stats'}><HistoryContainer initialTab="stats" /></div>
+          <div hidden={page !== 'stats'}><HistoryContainer /></div>
           <div hidden={page !== 'common-errors'}><CommonErrorsView /></div>
           <div hidden={page !== 'settings'}><SettingsContainer /></div>
         </ErrorBoundary>

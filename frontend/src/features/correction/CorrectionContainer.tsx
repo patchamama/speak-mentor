@@ -46,7 +46,7 @@ export function CorrectionContainer() {
   const [savedSessionId, setSavedSessionId] = useState<number | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-correction-history')
 
-  const { state, run, isRunning, activePasses } = useCorrectionPipeline()
+  const { state, run, isRunning, activePasses, rerunVocabulary, rerunExercises } = useCorrectionPipeline()
 
   const effectivePasses: CorrectionPassId[] = advanced ? pipeline.passes : ['correction']
 
@@ -57,6 +57,23 @@ export function CorrectionContainer() {
     push(text)
     run(text, level, 'es', advanced ? pipeline.passes : ['correction'])
   }, [text, level, isRunning, run, push, advanced, pipeline.passes])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSubmit()
+    },
+    [handleSubmit],
+  )
+
+  const handleRerun = useCallback(
+    (pass: CorrectionPassId) => {
+      const correctionData = state.correction.data
+      if (!correctionData || isRunning) return
+      if (pass === 'vocabulary') rerunVocabulary(correctionData, text, level)
+      if (pass === 'exercises') rerunExercises(correctionData, level)
+    },
+    [state.correction.data, text, level, isRunning, rerunVocabulary, rerunExercises],
+  )
 
   const handleSave = useCallback(async () => {
     const correctionData = state.correction.data
@@ -70,7 +87,13 @@ export function CorrectionContainer() {
         level,
         input_text: text,
         output_text: correctionData.corrected,
-        raw_llm: JSON.stringify(correctionData),
+        raw_llm: JSON.stringify({
+          correction: correctionData,
+          vocabulary: state.vocabulary.data,
+          exercises: state.exercises.data,
+          vocabularyHistory: state.vocabularyHistory,
+          exercisesHistory: state.exercisesHistory,
+        }),
         model: ollama.model,
         errors: correctionData.errors.map((e) => ({
           type: e.type,
@@ -88,22 +111,12 @@ export function CorrectionContainer() {
     } finally {
       setSaving(false)
     }
-  }, [state.correction.data, level, text, ollama.model])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSubmit()
-    },
-    [handleSubmit],
-  )
+  }, [state, level, text, ollama.model])
 
   const correctionResult = state.correction.data
-  const vocabResult = state.vocabulary.data
-  const exercisesResult = state.exercises.data
 
   // Favicon progress: correction 0-50%, vocab 50-75%, exercises 75-100%
   const faviconProgress = useMemo(() => {
-    if (!isRunning && state.correction.status === 'idle') return null
     if (!isRunning) return null
     let p = 0
     if (state.correction.status === 'running') p = 10
@@ -176,9 +189,12 @@ export function CorrectionContainer() {
         </div>
       </div>
 
-      {/* Pipeline status bar */}
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <PassStatusBar passes={activePasses} states={state as any} />
+      {/* Pipeline status bar — done badges are clickable to re-run */}
+      <PassStatusBar
+        passes={activePasses}
+        states={state as unknown as Record<string, import('./hooks/useCorrectionPipeline').PassState<unknown>>}
+        onRerun={handleRerun}
+      />
 
       {/* Correction error */}
       {state.correction.status === 'error' && (
@@ -248,31 +264,51 @@ export function CorrectionContainer() {
         </div>
       )}
 
-      {/* Pass 2: Vocabulary */}
-      {(state.vocabulary.status === 'running' || vocabResult) && (
-        <div className="rounded-lg border p-4 space-y-4">
+      {/* Pass 2: Vocabulary — all accumulated runs */}
+      {(state.vocabulary.status === 'running' || state.vocabularyHistory.length > 0) && (
+        <div className="space-y-4">
+          {state.vocabularyHistory.map((result, i) => (
+            <div key={i} className="rounded-lg border p-4 space-y-4">
+              {state.vocabularyHistory.length > 1 && (
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Vocabulario — generación {i + 1}
+                </p>
+              )}
+              <VocabularyPanel cards={result.vocab_cards} />
+            </div>
+          ))}
           {state.vocabulary.status === 'running' && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner className="h-4 w-4" /> Analizando vocabulario...
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner className="h-4 w-4" /> Analizando vocabulario...
+              </div>
             </div>
           )}
-          {vocabResult && <VocabularyPanel cards={vocabResult.vocab_cards} />}
         </div>
       )}
 
-      {/* Pass 3: Exercises */}
-      {(state.exercises.status === 'running' || exercisesResult) && (
-        <div className="rounded-lg border p-4 space-y-4">
-          {state.exercises.status === 'running' && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner className="h-4 w-4" /> Generando ejercicios...
+      {/* Pass 3: Exercises — all accumulated runs */}
+      {(state.exercises.status === 'running' || state.exercisesHistory.length > 0) && (
+        <div className="space-y-4">
+          {state.exercisesHistory.map((result, i) => (
+            <div key={i} className="rounded-lg border p-4 space-y-4">
+              {state.exercisesHistory.length > 1 && (
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Ejercicios — generación {i + 1}
+                </p>
+              )}
+              <ExercisesPanel
+                exercises={result.exercises}
+                studyAdvice={result.study_advice}
+              />
             </div>
-          )}
-          {exercisesResult && (
-            <ExercisesPanel
-              exercises={exercisesResult.exercises}
-              studyAdvice={exercisesResult.study_advice}
-            />
+          ))}
+          {state.exercises.status === 'running' && (
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner className="h-4 w-4" /> Generando ejercicios...
+              </div>
+            </div>
           )}
         </div>
       )}

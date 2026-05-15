@@ -8,7 +8,11 @@ export async function saveSession(session: Omit<Session, 'id' | 'created_at'>): 
 }
 
 export async function listSessions(params?: { page?: number; per_page?: number; mode?: string }) {
-  return api.get('sessions', { searchParams: params ?? {} }).json<{
+  const searchParams: Record<string, string | number> = {}
+  if (params?.page !== undefined) searchParams.page = params.page
+  if (params?.per_page !== undefined) searchParams.per_page = params.per_page
+  if (params?.mode) searchParams.mode = params.mode
+  return api.get('sessions', { searchParams }).json<{
     sessions: Session[]
     total: number
     page: number

@@ -25,11 +25,13 @@ CHOOSE_ONE RULES (same as standard exercises):
 - Difficulty matches {{LEVEL}}.
 
 FILL_TABLE RULES:
-- Base the table on one of the reference tables from the category.
+- Base the table on the reference tables from the category.
+- MODAL VERBS EXCEPTION: If the category is about modal verbs (Modalverben / verbos modales), generate ONE SINGLE unified fill_table that combines ALL modal verbs into one table. Columns = the modal verbs (dürfen, können, mögen/möchten, müssen, sollen, wollen); rows = pronouns (ich, du, er/sie/es, wir, ihr, sie/Sie). Do NOT generate separate tables per verb.
 - First row cells MUST have "isHeader": true — they are shown to the learner as a hint row.
+- Column 0 cells (Caso / Pronomen / Persona labels) MUST have "isHeader": true — they are shown as fixed row labels.
 - All other cells have "isHeader": false — they become input fields for the learner.
-- Keep the table to at most 5 rows × 5 columns so it fits on screen.
-- "table_title" must match the corresponding reference table title.
+- Keep the table to at most 8 rows × 8 columns so it fits on screen.
+- "table_title" must match the corresponding reference table title (or "Verbos modales — conjugación" for the unified modal table).
 - "headers" lists the column headers (same as the reference table headers).
 - "answer_explanation" explains the full pattern in {{EXPLANATION_LANG}}.
 

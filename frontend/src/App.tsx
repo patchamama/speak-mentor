@@ -7,6 +7,7 @@ import { SettingsContainer } from './features/settings/SettingsContainer'
 import { CommonErrorsView } from './features/common-errors/CommonErrorsView'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useThemeStore } from './stores/themeStore'
+import { useFaviconRenderer } from './shared/hooks/useFaviconProgress'
 import { cn } from './lib/utils'
 
 type Page = 'correction' | 'translation' | 'common-errors' | 'stats' | 'settings'
@@ -22,6 +23,7 @@ const PAGE_LABELS: Record<Page, string> = {
 export default function App() {
   const [page, setPage] = useState<Page>('correction')
   const { dark, toggle } = useThemeStore()
+  useFaviconRenderer()
 
   return (
     <div className="min-h-screen bg-background text-foreground">

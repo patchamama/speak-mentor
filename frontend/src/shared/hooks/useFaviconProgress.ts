@@ -1,12 +1,9 @@
 import { useEffect, useRef } from 'react'
-
-interface FaviconProgressOptions {
-  progress: number | null  // 0-100, null = idle (restore default)
-  color?: string
-}
+import { useFaviconStore } from '@/stores/faviconStore'
 
 const FAVICON_SIZE = 32
 const DEFAULT_FAVICON = '/favicon.svg'
+const PROGRESS_COLOR = '#38bdf8'
 
 function getOrCreateLink(): HTMLLinkElement {
   let link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]')
@@ -18,35 +15,31 @@ function getOrCreateLink(): HTMLLinkElement {
   return link
 }
 
-function drawFavicon(progress: number, color: string): string {
+function drawFavicon(progress: number): string {
   const canvas = document.createElement('canvas')
   canvas.width = FAVICON_SIZE
   canvas.height = FAVICON_SIZE
   const ctx = canvas.getContext('2d')!
 
-  // Dark background circle
   ctx.beginPath()
   ctx.arc(16, 16, 15, 0, Math.PI * 2)
   ctx.fillStyle = '#1e293b'
   ctx.fill()
 
-  // Progress arc (clockwise from top)
   const start = -Math.PI / 2
   const end = start + (progress / 100) * Math.PI * 2
   ctx.beginPath()
   ctx.moveTo(16, 16)
   ctx.arc(16, 16, 15, start, end)
   ctx.closePath()
-  ctx.fillStyle = color
+  ctx.fillStyle = PROGRESS_COLOR
   ctx.fill()
 
-  // Inner circle (donut hole) — white
   ctx.beginPath()
   ctx.arc(16, 16, 9, 0, Math.PI * 2)
   ctx.fillStyle = '#1e293b'
   ctx.fill()
 
-  // Percentage text
   const label = progress >= 100 ? '✓' : `${Math.round(progress)}`
   ctx.fillStyle = '#f8fafc'
   ctx.font = `bold ${progress >= 100 ? 11 : 9}px system-ui,sans-serif`
@@ -57,22 +50,45 @@ function drawFavicon(progress: number, color: string): string {
   return canvas.toDataURL('image/png')
 }
 
-export function useFaviconProgress({ progress, color = '#38bdf8' }: FaviconProgressOptions) {
+// Global favicon renderer — mount once in App.tsx
+export function useFaviconRenderer() {
+  const overallProgress = useFaviconStore((s) => s.overallProgress)
+  const tasks = useFaviconStore((s) => s.tasks)
   const prevProgress = useRef<number | null>(null)
 
   useEffect(() => {
+    const progress = overallProgress()
     if (progress === prevProgress.current) return
     prevProgress.current = progress
 
     const link = getOrCreateLink()
-
     if (progress === null) {
       link.type = 'image/svg+xml'
       link.href = DEFAULT_FAVICON
-      return
+    } else {
+      link.type = 'image/png'
+      link.href = drawFavicon(progress)
     }
+  }, [tasks, overallProgress])
+}
 
-    link.type = 'image/png'
-    link.href = drawFavicon(Math.min(100, Math.max(0, progress)), color)
-  }, [progress, color])
+// Per-task hook — registers progress with a unique key
+export function useFaviconProgress(key: string, progress: number | null) {
+  const setTask = useFaviconStore((s) => s.setTask)
+  const prevProgress = useRef<number | null>(undefined as unknown as null)
+
+  useEffect(() => {
+    if (progress === prevProgress.current) return
+    prevProgress.current = progress
+    setTask(key, progress)
+    return () => {
+      if (progress !== null) setTask(key, null)
+    }
+  }, [key, progress, setTask])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => setTask(key, null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 }

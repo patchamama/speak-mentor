@@ -168,7 +168,10 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
               const correctionData: CorrectionResponse | null = (() => {
                 if (detail.mode !== 'correction' || !detail.raw_llm) return null
                 try {
-                  const parsed: CorrectionResponse = JSON.parse(detail.raw_llm)
+                  const raw = JSON.parse(detail.raw_llm)
+                  // New format: { correction, vocabulary, exercises, ... }
+                  // Old format: raw IS the CorrectionResponse directly
+                  const parsed: CorrectionResponse = raw.correction ?? raw
                   if (detail.errors && detail.errors.length > 0) {
                     parsed.errors = parsed.errors.map((err, i) => {
                       const saved = detail.errors![i]

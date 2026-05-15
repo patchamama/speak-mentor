@@ -66,21 +66,42 @@ interface CellState {
 }
 
 function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index: number }) {
-  const totalInputs = exercise.rows.slice(1).reduce((acc, row) => {
-    return acc + row.filter((c) => !c.isHeader).length
+  // col 0 is always the "Caso/Persona" label column — never an input
+  const dataRows = exercise.rows.slice(1)
+
+  const totalInputs = dataRows.reduce((acc, row) => {
+    return acc + row.filter((c, ci) => !c.isHeader && ci > 0).length
   }, 0)
 
-  const [cells, setCells] = useState<CellState[][]>(() =>
-    exercise.rows.slice(1).map((row) =>
-      row.map(() => ({ value: '', status: 'neutral' as const })),
-    ),
-  )
+  const [cells, setCells] = useState<CellState[][]>(() => {
+    // collect all fillable positions
+    const fillable: [number, number][] = []
+    dataRows.forEach((row, ri) => {
+      row.forEach((cell, ci) => {
+        if (!cell.isHeader && ci > 0) fillable.push([ri, ci])
+      })
+    })
+    // pick ~25% to pre-fill
+    const hintCount = Math.max(1, Math.round(fillable.length * 0.25))
+    const shuffled = [...fillable].sort(() => Math.random() - 0.5)
+    const hints = new Set(shuffled.slice(0, hintCount).map(([r, c]) => `${r},${c}`))
 
-  const correct = cells.flat().filter((c) => c.status === 'correct').length
-  const answered = cells.flat().filter((c) => c.status !== 'neutral').length
+    return dataRows.map((row, ri) =>
+      row.map((cell, ci) => {
+        if (ci > 0 && !cell.isHeader && hints.has(`${ri},${ci}`)) {
+          return { value: cell.value, status: 'correct' as const }
+        }
+        return { value: '', status: 'neutral' as const }
+      }),
+    )
+  })
+
+  const inputCells = cells.flatMap((row, _ri) => row.filter((_c, ci) => ci > 0))
+  const correct = inputCells.filter((c) => c.status === 'correct').length
+  const answered = inputCells.filter((c) => c.status !== 'neutral').length
 
   function handleSubmit(ri: number, ci: number, answer: FillTableCell) {
-    const userVal = cells[ri][ci].value.trim().toLowerCase()
+    const userVal = cells[ri]?.[ci]?.value.trim().toLowerCase() ?? ''
     const correctVal = answer.value.trim().toLowerCase()
     const status = userVal === correctVal ? 'correct' : 'wrong'
     setCells((prev) => {
@@ -90,12 +111,7 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
     })
   }
 
-  function handleKeyDown(
-    e: React.KeyboardEvent<HTMLInputElement>,
-    ri: number,
-    ci: number,
-    answer: FillTableCell,
-  ) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>, ri: number, ci: number, answer: FillTableCell) {
     if (e.key === 'Enter') {
       e.preventDefault()
       handleSubmit(ri, ci, answer)
@@ -123,24 +139,25 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
           <thead>
             <tr className="border-b bg-muted/50">
               {exercise.headers.map((h, i) => (
-                <th key={i} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>
+                <th key={i} className={cn('px-3 py-2 text-left font-semibold whitespace-nowrap', i === 0 && 'sticky left-0 bg-muted/80 z-10')}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {exercise.rows.map((row, ri) => {
+            {dataRows.map((row, ri) => {
               const isHeaderRow = row.every((c) => c.isHeader)
               return (
                 <tr key={ri} className="border-b last:border-0">
                   {row.map((cell, ci) => {
-                    if (isHeaderRow || cell.isHeader) {
+                    // col 0: always static label (sticky)
+                    if (ci === 0 || isHeaderRow || cell.isHeader) {
                       return (
-                        <td key={ci} className="px-3 py-1.5 font-mono whitespace-nowrap bg-muted/30 font-medium">
+                        <td key={ci} className={cn('px-3 py-1.5 font-mono whitespace-nowrap bg-muted/30 font-medium', ci === 0 && 'sticky left-0 z-10')}>
                           {cell.value}
                         </td>
                       )
                     }
-                    const cellState = cells[ri - 1]?.[ci]
+                    const cellState = cells[ri]?.[ci]
                     const status = cellState?.status ?? 'neutral'
                     return (
                       <td key={ci} className="px-2 py-1">
@@ -152,16 +169,16 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
                             onChange={(e) =>
                               setCells((prev) => {
                                 const next = prev.map((r) => r.map((c) => ({ ...c })))
-                                next[ri - 1][ci].value = e.target.value
+                                next[ri][ci].value = e.target.value
                                 return next
                               })
                             }
                             onBlur={() => {
                               if (status === 'neutral' && cellState?.value.trim()) {
-                                handleSubmit(ri - 1, ci, cell)
+                                handleSubmit(ri, ci, cell)
                               }
                             }}
-                            onKeyDown={(e) => handleKeyDown(e, ri - 1, ci, cell)}
+                            onKeyDown={(e) => handleKeyDown(e, ri, ci, cell)}
                             className={cn(
                               'w-full min-w-[60px] px-2 py-1 text-xs font-mono rounded border bg-background outline-none transition-colors',
                               status === 'correct' && 'border-green-500 bg-green-500/10 text-green-700 dark:text-green-400',

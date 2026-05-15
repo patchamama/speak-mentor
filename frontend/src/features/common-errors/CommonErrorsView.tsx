@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { COMMON_ERRORS_DATA, type CommonErrorCategory, type ReferenceTable } from './data/commonErrors'
 import { useCommonErrorsExercises } from './hooks/useCommonErrorsExercises'
@@ -75,16 +75,32 @@ function RefTable({ table }: { table: ReferenceTable }) {
   )
 }
 
-function CategorySection({ category }: { category: CommonErrorCategory }) {
-  const [open, setOpen] = useState(true)
+interface CategorySectionProps {
+  category: CommonErrorCategory
+  open: boolean
+  onToggle: () => void
+  onExercisesGenerated: (categoryId: string) => void
+}
+
+function CategorySection({ category, open, onToggle, onExercisesGenerated }: CategorySectionProps) {
   const colorClass = ERROR_TYPE_COLORS[category.errorType] ?? 'bg-muted text-muted-foreground'
   const { lastCorrectionLevel } = useSettingsStore()
   const { status, result, error, generate } = useCommonErrorsExercises(category, lastCorrectionLevel)
 
+  const handleGenerate = useCallback(async () => {
+    await generate()
+    onExercisesGenerated(category.id)
+  }, [generate, onExercisesGenerated, category.id])
+
+  // When exercises are done, show only the exercises section (examples/tables collapsed)
+  const exercisesDone = status === 'done' && result !== null
+  const showContent = open && !exercisesDone
+  const showExercises = status === 'done' && result !== null
+
   return (
     <section className="space-y-3">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={onToggle}
         className="w-full flex items-center justify-between text-left group"
         aria-expanded={open}
       >
@@ -98,11 +114,15 @@ function CategorySection({ category }: { category: CommonErrorCategory }) {
             </h3>
             <p className="text-xs text-muted-foreground">{category.subtitle}</p>
           </div>
+          {exercisesDone && (
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium">✓ ejercicios generados</span>
+          )}
         </div>
         <span className="text-muted-foreground text-sm">{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && (
+      {/* Content: examples + tables — hidden when exercises done unless manually expanded */}
+      {showContent && (
         <div className="space-y-4 pl-2 border-l-2 border-muted ml-1">
           {category.examples.map((ex) => (
             <ExampleCard key={ex.id} example={ex} />
@@ -115,33 +135,39 @@ function CategorySection({ category }: { category: CommonErrorCategory }) {
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          <div className="pt-2">
-            <button
-              onClick={generate}
-              disabled={status === 'loading'}
-              className={cn(
-                'text-sm px-4 py-2 rounded-md border transition-colors',
-                status === 'loading'
-                  ? 'border-border text-muted-foreground cursor-not-allowed'
-                  : 'border-primary text-primary hover:bg-primary/5 cursor-pointer',
-              )}
-            >
-              {status === 'loading'
-                ? '⏳ Generando ejercicios...'
-                : status === 'done'
-                  ? '↺ Regenerar ejercicios'
-                  : '✦ Generar ejercicios'}
-            </button>
-
-            {status === 'error' && error && (
-              <p className="mt-2 text-xs text-destructive">{error}</p>
+      {/* Generate button — always visible when section is open or exercises done */}
+      {(open || exercisesDone) && (
+        <div className={cn('pt-1', !open && 'pl-2 border-l-2 border-muted ml-1')}>
+          <button
+            onClick={handleGenerate}
+            disabled={status === 'loading'}
+            className={cn(
+              'text-sm px-4 py-2 rounded-md border transition-colors',
+              status === 'loading'
+                ? 'border-border text-muted-foreground cursor-not-allowed'
+                : 'border-primary text-primary hover:bg-primary/5 cursor-pointer',
             )}
+          >
+            {status === 'loading'
+              ? '⏳ Generando ejercicios...'
+              : status === 'done'
+                ? '↺ Regenerar ejercicios'
+                : '✦ Generar ejercicios'}
+          </button>
 
-            {status === 'done' && result && (
-              <CommonErrorsExercisePanel result={result} />
-            )}
-          </div>
+          {status === 'error' && error && (
+            <p className="mt-2 text-xs text-destructive">{error}</p>
+          )}
+        </div>
+      )}
+
+      {/* Exercises panel — always visible once generated */}
+      {showExercises && (
+        <div className="pl-2 border-l-2 border-primary/30 ml-1">
+          <CommonErrorsExercisePanel result={result} />
         </div>
       )}
     </section>
@@ -150,13 +176,27 @@ function CategorySection({ category }: { category: CommonErrorCategory }) {
 
 export function CommonErrorsView() {
   const [filter, setFilter] = useState<string>('all')
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    () => new Set(COMMON_ERRORS_DATA.map((c) => c.id))
+  )
 
   const errorTypes = ['all', ...new Set(COMMON_ERRORS_DATA.map((c) => c.errorType))]
-
-  const filtered =
-    filter === 'all' ? COMMON_ERRORS_DATA : COMMON_ERRORS_DATA.filter((c) => c.errorType === filter)
-
+  const filtered = filter === 'all' ? COMMON_ERRORS_DATA : COMMON_ERRORS_DATA.filter((c) => c.errorType === filter)
   const totalExamples = COMMON_ERRORS_DATA.reduce((acc, c) => acc + c.examples.length, 0)
+
+  const toggleOpen = useCallback((id: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  // When exercises are generated for a category, collapse all other categories
+  const handleExercisesGenerated = useCallback((categoryId: string) => {
+    setOpenIds(new Set([categoryId]))
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -193,7 +233,13 @@ export function CommonErrorsView() {
 
       <div className="space-y-8">
         {filtered.map((cat) => (
-          <CategorySection key={cat.id} category={cat} />
+          <CategorySection
+            key={cat.id}
+            category={cat}
+            open={openIds.has(cat.id)}
+            onToggle={() => toggleOpen(cat.id)}
+            onExercisesGenerated={handleExercisesGenerated}
+          />
         ))}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useFaviconStore } from '@/stores/faviconStore'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
 import { callOllama } from '@/shared/ollama/client'
 import type { CommonErrorCategory } from '../data/commonErrors'
@@ -59,10 +60,13 @@ export function useCommonErrorsExercises(
   const [error, setError] = useState<string | null>(null)
 
   const { ollama } = useSettingsStore()
+  const faviconKey = `common-errors-${category.id}`
+  const setTask = useFaviconStore((s) => s.setTask)
 
   const generate = useCallback(async () => {
     setStatus('loading')
     setError(null)
+    setTask(faviconKey, 10)
 
     try {
       const prompt = buildPrompt({
@@ -72,7 +76,9 @@ export function useCommonErrorsExercises(
         explanationLang,
       })
 
+      setTask(faviconKey, 40)
       const raw = await callOllama(ollama, prompt, ollama.model, ollama.keepAlive)
+      setTask(faviconKey, 90)
       const parsed = JSON.parse(raw) as CommonErrorsExercisesResult
 
       if (!parsed.exercises || !Array.isArray(parsed.exercises)) {
@@ -81,11 +87,13 @@ export function useCommonErrorsExercises(
 
       setResult(parsed)
       setStatus('done')
+      setTask(faviconKey, null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
       setStatus('error')
+      setTask(faviconKey, null)
     }
-  }, [category, level, explanationLang, ollama])
+  }, [category, level, explanationLang, ollama, faviconKey, setTask])
 
   return { status, result, error, generate }
 }

@@ -127,7 +127,7 @@ export function CorrectionContainer() {
     if (state.exercises.status === 'done') p = 100
     return p
   }, [isRunning, state])
-  useFaviconProgress({ progress: faviconProgress, color: '#38bdf8' })
+  useFaviconProgress('correction', faviconProgress)
 
   return (
     <div className="space-y-6">

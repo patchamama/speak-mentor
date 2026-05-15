@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { COMMON_ERRORS_DATA, type CommonErrorCategory, type ReferenceTable } from './data/commonErrors'
+import { useCommonErrorsExercises } from './hooks/useCommonErrorsExercises'
+import { CommonErrorsExercisePanel } from './components/CommonErrorsExercisePanel'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 const ERROR_TYPE_COLORS: Record<string, string> = {
   case: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
@@ -75,6 +78,8 @@ function RefTable({ table }: { table: ReferenceTable }) {
 function CategorySection({ category }: { category: CommonErrorCategory }) {
   const [open, setOpen] = useState(true)
   const colorClass = ERROR_TYPE_COLORS[category.errorType] ?? 'bg-muted text-muted-foreground'
+  const { lastCorrectionLevel } = useSettingsStore()
+  const { status, result, error, generate } = useCommonErrorsExercises(category, lastCorrectionLevel)
 
   return (
     <section className="space-y-3">
@@ -110,6 +115,33 @@ function CategorySection({ category }: { category: CommonErrorCategory }) {
               ))}
             </div>
           )}
+
+          <div className="pt-2">
+            <button
+              onClick={generate}
+              disabled={status === 'loading'}
+              className={cn(
+                'text-sm px-4 py-2 rounded-md border transition-colors',
+                status === 'loading'
+                  ? 'border-border text-muted-foreground cursor-not-allowed'
+                  : 'border-primary text-primary hover:bg-primary/5 cursor-pointer',
+              )}
+            >
+              {status === 'loading'
+                ? '⏳ Generando ejercicios...'
+                : status === 'done'
+                  ? '↺ Regenerar ejercicios'
+                  : '✦ Generar ejercicios'}
+            </button>
+
+            {status === 'error' && error && (
+              <p className="mt-2 text-xs text-destructive">{error}</p>
+            )}
+
+            {status === 'done' && result && (
+              <CommonErrorsExercisePanel result={result} />
+            )}
+          </div>
         </div>
       )}
     </section>

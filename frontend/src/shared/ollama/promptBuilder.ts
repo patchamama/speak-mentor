@@ -4,7 +4,9 @@ import { TRANSLATION_SYSTEM_TEMPLATE } from './templates/translation-system'
 import { VOCABULARY_SYSTEM_TEMPLATE } from './templates/vocabulary-system'
 import { EXERCISES_SYSTEM_TEMPLATE } from './templates/exercises-system'
 import { VERIFICATION_SYSTEM_TEMPLATE } from './templates/verification-system'
+import { COMMON_ERRORS_EXERCISES_SYSTEM_TEMPLATE } from './templates/common-errors-exercises-system'
 import { DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
+import type { CommonErrorCategory } from '@/features/common-errors/data/commonErrors'
 
 interface CorrectionPromptInput {
   mode: 'correction'
@@ -52,12 +54,21 @@ interface TranslationPromptInput {
   modelParams?: Partial<ModelParams>
 }
 
+interface CommonErrorsExercisesPromptInput {
+  mode: 'commonErrorsExercises'
+  category: CommonErrorCategory
+  level: CEFRLevel
+  explanationLang?: Lang
+  modelParams?: Partial<ModelParams>
+}
+
 export type PromptInput =
   | CorrectionPromptInput
   | VocabularyPromptInput
   | ExercisesPromptInput
   | VerificationPromptInput
   | TranslationPromptInput
+  | CommonErrorsExercisesPromptInput
 
 export interface BuiltPrompt {
   system: string
@@ -138,6 +149,33 @@ export function buildPrompt(input: PromptInput): BuiltPrompt {
       user: `TEXT: ${input.correctedText}`,
       ...baseOpts,
       options: { ...baseOpts.options, temperature: 0 },
+    }
+  }
+
+  if (input.mode === 'commonErrorsExercises') {
+    const { category, level } = input
+    const hasTables = !!(category.referenceTables && category.referenceTables.length > 0)
+    const tableTitles = hasTables ? category.referenceTables!.map((t) => t.title).join(', ') : ''
+    const examplesJson = JSON.stringify(
+      category.examples.map((e) => ({
+        wrong: e.wrong,
+        correct: e.correct,
+        explanation: e.explanation,
+        rule: e.rule,
+      })),
+      null,
+      2,
+    )
+    const system = applyBaseVars(COMMON_ERRORS_EXERCISES_SYSTEM_TEMPLATE, level, explanationLang)
+      .replaceAll('{{CATEGORY_TITLE}}', category.title)
+      .replaceAll('{{ERROR_TYPE}}', category.errorType)
+      .replaceAll('{{EXAMPLES}}', examplesJson)
+      .replaceAll('{{HAS_TABLES}}', hasTables ? 'true' : 'false')
+      .replaceAll('{{TABLE_TITLES}}', tableTitles)
+    return {
+      system,
+      user: `CATEGORY: ${category.title}\nERROR_TYPE: ${category.errorType}\nLEVEL: ${level}\nEXPLANATION_LANG: ${explanationLang}`,
+      ...baseOpts,
     }
   }
 

@@ -3,7 +3,7 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useFaviconStore } from '@/stores/faviconStore'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
 import { callOllama } from '@/shared/ollama/client'
-import type { CommonErrorCategory } from '../data/commonErrors'
+import type { CommonErrorCategory, ReferenceTable } from '../data/commonErrors'
 import type { CEFRLevel, Lang } from '@/shared/types'
 
 export interface ChooseOneExercise {
@@ -41,6 +41,42 @@ export interface CommonErrorsExercisesResult {
   study_advice: string
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function refTableToFillTable(table: ReferenceTable, id: number): FillTableExercise {
+  // Col 0 = case/pronoun labels → always isHeader: true
+  // All other cells → isHeader: false (fillable)
+  const rows: FillTableCell[][] = table.rows.map((row) =>
+    row.map((val, ci) => ({ value: val, isHeader: ci === 0 })),
+  )
+  return {
+    id,
+    type: 'fill_table',
+    targets_error_type: 'declension',
+    instruction: `Completá la tabla de declinación: ${table.title}`,
+    table_title: table.title,
+    headers: table.headers,
+    rows,
+    answer_explanation: table.note ?? '',
+  }
+}
+
+function deduplicateOptions(exercises: CommonErrorExercise[]): CommonErrorExercise[] {
+  return exercises.map((ex) => {
+    if (ex.type !== 'choose_one') return ex
+    const seen = new Set<string>()
+    const unique = ex.options.filter((o) => {
+      const key = o.trim().toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    return { ...ex, options: unique }
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
 interface UseCommonErrorsExercisesReturn {
@@ -69,6 +105,11 @@ export function useCommonErrorsExercises(
     setTask(faviconKey, 10)
 
     try {
+      // Build fill_table exercises directly from reference tables (no AI needed)
+      const staticFillTables: FillTableExercise[] = (category.referenceTables ?? []).map(
+        (table, i) => refTableToFillTable(table, -(i + 1)),
+      )
+
       const prompt = buildPrompt({
         mode: 'commonErrorsExercises',
         category,
@@ -85,7 +126,11 @@ export function useCommonErrorsExercises(
         throw new Error('Respuesta inválida del modelo')
       }
 
-      setResult(parsed)
+      // Keep only choose_one from AI (discard any AI-generated fill_table — use real data instead)
+      const chooseOnly = parsed.exercises.filter((e) => e.type === 'choose_one')
+      const allExercises = deduplicateOptions([...staticFillTables, ...chooseOnly])
+
+      setResult({ ...parsed, exercises: allExercises })
       setStatus('done')
       setTask(faviconKey, null)
     } catch (err) {

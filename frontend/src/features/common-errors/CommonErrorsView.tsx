@@ -193,6 +193,11 @@ export function CommonErrorsView() {
     })
   }, [])
 
+  const allOpen = openIds.size === filtered.length
+  const toggleAll = useCallback(() => {
+    setOpenIds(allOpen ? new Set() : new Set(COMMON_ERRORS_DATA.map((c) => c.id)))
+  }, [allOpen])
+
   // When exercises are generated for a category, collapse all other categories
   const handleExercisesGenerated = useCallback((categoryId: string) => {
     setOpenIds(new Set([categoryId]))
@@ -200,12 +205,20 @@ export function CommonErrorsView() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Errores frecuentes</h2>
-        <p className="text-muted-foreground mt-1">
-          Los errores más comunes de hispanohablantes al aprender alemán — {totalExamples} ejemplos
-          con explicación, regla y truco mnemotécnico.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Errores frecuentes</h2>
+          <p className="text-muted-foreground mt-1">
+            Los errores más comunes de hispanohablantes al aprender alemán — {totalExamples} ejemplos
+            con explicación, regla y truco mnemotécnico.
+          </p>
+        </div>
+        <button
+          onClick={toggleAll}
+          className="shrink-0 text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-colors"
+        >
+          {allOpen ? '▲ Contraer todo' : '▼ Expandir todo'}
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de error">

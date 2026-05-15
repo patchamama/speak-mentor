@@ -6,11 +6,14 @@ import { ByTypeChart, ByLevelChart, TimelineChart, TopRulesTable } from './compo
 import { ErrorHighlight, ERROR_COLORS_MAP } from '@/features/correction/components/ErrorHighlight'
 import { ErrorPanel } from '@/features/correction/components/ErrorPanel'
 import { TipsList } from '@/features/correction/components/TipsList'
+import { VocabularyPanel } from '@/features/correction/components/VocabularyPanel'
+import { ExercisesPanel } from '@/features/correction/components/ExercisesPanel'
 import {
   useSessionList, useSessionDetail, useDeleteSession,
   useStatsByType, useStatsByLevel, useStatsTimeline, useTopRules,
 } from './hooks/useHistory'
 import type { CorrectionResponse } from '@/shared/ollama/schemas'
+import type { VocabularyResult, ExercisesResult } from '@/features/correction/hooks/useCorrectionPipeline'
 
 function StatsPanel() {
   const { data: byType, isError: byTypeErr, isLoading: byTypeLoading } = useStatsByType()
@@ -162,15 +165,10 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
             )}
             {detailLoading && <div className="flex justify-center p-8"><Spinner /></div>}
             {detail && !detailLoading && (() => {
-              // Parse raw_llm and merge position_unreliable from persisted errors
-              // (raw_llm is the model's JSON output; position_unreliable is added by
-              // client.ts post-processing and stored separately in the errors table)
               const correctionData: CorrectionResponse | null = (() => {
                 if (detail.mode !== 'correction' || !detail.raw_llm) return null
                 try {
                   const raw = JSON.parse(detail.raw_llm)
-                  // New format: { correction, vocabulary, exercises, ... }
-                  // Old format: raw IS the CorrectionResponse directly
                   const parsed: CorrectionResponse = raw.correction ?? raw
                   if (detail.errors && detail.errors.length > 0) {
                     parsed.errors = parsed.errors.map((err, i) => {
@@ -185,6 +183,26 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                 } catch {
                   return null
                 }
+              })()
+
+              const vocabularyHistory: VocabularyResult[] = (() => {
+                if (!detail.raw_llm) return []
+                try {
+                  const raw = JSON.parse(detail.raw_llm)
+                  if (raw.vocabularyHistory && Array.isArray(raw.vocabularyHistory)) return raw.vocabularyHistory
+                  if (raw.vocabulary) return [raw.vocabulary]
+                  return []
+                } catch { return [] }
+              })()
+
+              const exercisesHistory: ExercisesResult[] = (() => {
+                if (!detail.raw_llm) return []
+                try {
+                  const raw = JSON.parse(detail.raw_llm)
+                  if (raw.exercisesHistory && Array.isArray(raw.exercisesHistory)) return raw.exercisesHistory
+                  if (raw.exercises) return [raw.exercises]
+                  return []
+                } catch { return [] }
               })()
 
               return (
@@ -251,7 +269,53 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                         <TipsList tips={correctionData.tips} mainFocus={correctionData.summary.main_focus} />
                       </div>
                     </>
-                  ) : (
+                  ) : null}
+
+                  {/* Vocabulary — all runs */}
+                  {vocabularyHistory.length > 0 && (
+                    <div className="space-y-4">
+                      {vocabularyHistory.map((result, i) => (
+                        <div key={i} className="rounded-lg border p-4 space-y-4">
+                          {vocabularyHistory.length > 1 && (
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              Vocabulario — generación {i + 1}
+                            </p>
+                          )}
+                          <VocabularyPanel cards={result.vocab_cards} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Exercises — all runs */}
+                  {exercisesHistory.length > 0 && (
+                    <div className="space-y-4">
+                      {exercisesHistory.map((result, i) => (
+                        <div key={i} className="rounded-lg border p-4 space-y-4">
+                          {exercisesHistory.length > 1 && (
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              Ejercicios — generación {i + 1}
+                            </p>
+                          )}
+                          <ExercisesPanel exercises={result.exercises} studyAdvice={result.study_advice} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!correctionData && vocabularyHistory.length === 0 && exercisesHistory.length === 0 && (
+                    <>
+                      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.input_text}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/30 p-4 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.output_text}</p>
+                      </div>
+                    </>
+                  )}
+                  {detail.mode === 'translation' && (
                     <>
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>

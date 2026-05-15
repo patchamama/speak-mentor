@@ -74,6 +74,12 @@ IMPORTANT:
 - Do NOT translate. Stay in German for \`corrected\` and \`correction\`. Only
   \`explanation\`, \`gap_notes\`, \`main_focus\`, \`tips\` go in {{EXPLANATION_LANG}}.
 - Keep \`original\` substring EXACT — same casing, same punctuation.
+- For any error of type "declension", "case", or "agreement" involving a noun phrase:
+  ALWAYS include in the \`explanation\` field: (1) the related noun with its base
+  nominative article (e.g. "der Hund", "die Frau", "das Kind"), and (2) the full
+  declension of the article/adjective/possessive for the affected case (show all four
+  cases: Nom → Akk → Dat → Gen). Example addition to explanation: "Sustantivo base:
+  der Mann (masc.). Declinación del artículo definido: Nom: der | Akk: den | Dat: dem | Gen: des".
 
 EXAMPLE (A2 input with multiple errors):
 Input: LEVEL: A2 | TEXT: Ich gehe zu der Schule mit mein Bruder jeden Tag.

@@ -23,6 +23,6 @@ describe('buildPrompt', () => {
     expect(result.system).toContain('es')
     expect(result.system).toContain('de')
     expect(result.user).toContain('Hola mundo')
-    expect(result.options.temperature).toBe(0.3)
+    expect(result.options.temperature).toBe(0.2)
   })
 })

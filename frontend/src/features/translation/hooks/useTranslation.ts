@@ -19,7 +19,7 @@ interface UseTranslationReturn {
 }
 
 export function useTranslation(): UseTranslationReturn {
-  const { ollama } = useSettingsStore()
+  const { ollama, modelParams, prompts, setLastTranslationLevel } = useSettingsStore()
   const [result, setResult] = useState<TranslationResponse | null>(null)
   const [rawError, setRawError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -31,8 +31,13 @@ export function useTranslation(): UseTranslationReturn {
     setRawError(null)
     setResult(null)
     setSavedSessionId(null)
+    setLastTranslationLevel(level)
     try {
-      const prompt = buildPrompt({ mode: 'translation', text, sourceLang, targetLang, level })
+      const prompt = buildPrompt({
+        mode: 'translation', text, sourceLang, targetLang, level,
+        systemOverride: prompts.translationSystem,
+        modelParams,
+      })
       const response = await translateText(ollama, prompt, ollama.model)
       setResult(response)
     } catch (err) {

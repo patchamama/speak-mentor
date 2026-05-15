@@ -4,6 +4,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
 import type { CEFRLevel, Lang } from '@/shared/types'
 import type { TranslationResponse } from '@/shared/ollama/schemas'
@@ -31,10 +32,11 @@ const NOTE_TYPE_LABELS: Record<string, string> = {
 export function TranslationView({
   result, rawError, loading, saving, savedSessionId, onTranslate, onSave,
 }: TranslationViewProps) {
+  const { lastTranslationLevel } = useSettingsStore()
   const [text, setText] = useState('')
   const [sourceLang, setSourceLang] = useState<Lang>('de')
   const [targetLang, setTargetLang] = useState<Lang>('es')
-  const [level, setLevel] = useState<CEFRLevel>('B1')
+  const [level, setLevel] = useState<CEFRLevel>(lastTranslationLevel)
   const [showAlternatives, setShowAlternatives] = useState(false)
   const { history, push, remove } = useInputHistory('speak-mentor-translation-history')
 

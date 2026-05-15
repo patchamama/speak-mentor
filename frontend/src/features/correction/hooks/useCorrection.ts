@@ -19,7 +19,7 @@ interface UseCorrectionReturn {
 }
 
 export function useCorrection(): UseCorrectionReturn {
-  const { ollama } = useSettingsStore()
+  const { ollama, modelParams, prompts, setLastCorrectionLevel } = useSettingsStore()
   const [result, setResult] = useState<CorrectionResponse | null>(null)
   const [rawError, setRawError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -31,8 +31,13 @@ export function useCorrection(): UseCorrectionReturn {
     setRawError(null)
     setResult(null)
     setSavedSessionId(null)
+    setLastCorrectionLevel(level)
     try {
-      const prompt = buildPrompt({ mode: 'correction', text, level })
+      const prompt = buildPrompt({
+        mode: 'correction', text, level,
+        systemOverride: prompts.correctionSystem,
+        modelParams,
+      })
       const response = await correctText(ollama, prompt, ollama.model, text)
       setResult(response)
     } catch (err) {

@@ -8,6 +8,18 @@ export interface OllamaConfig {
   model: string
 }
 
+export interface ModelParams {
+  temperature: number
+  top_p: number
+  num_ctx: number
+  timeout: number        // ms
+}
+
+export interface PromptOverrides {
+  correctionSystem: string
+  translationSystem: string
+}
+
 export interface ErrorItem {
   id?: number
   original: string

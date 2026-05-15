@@ -43,7 +43,7 @@ export function InputHistory({ history, onSelect, onRemove }: InputHistoryProps)
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-80 rounded-md border bg-popover shadow-md">
+        <div className="absolute left-0 top-full mt-1 z-50 w-80 rounded-md border bg-background shadow-lg">
           <div className="p-1">
             {history.map((entry, i) => (
               <div

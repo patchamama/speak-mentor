@@ -36,7 +36,7 @@ async function callOllama(config: OllamaConfig, prompt: BuiltPrompt, model: stri
         { role: 'user', content: prompt.user },
       ],
     },
-    timeout: 60000,
+    timeout: prompt.timeout,
   }).json<{ message: { content: string } }>()
 
   return response.message.content

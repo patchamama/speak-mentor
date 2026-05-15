@@ -4,6 +4,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { ErrorHighlight, ERROR_COLORS_MAP } from './components/ErrorHighlight'
 import { ErrorPanel } from './components/ErrorPanel'
 import { TipsList } from './components/TipsList'
@@ -31,8 +32,9 @@ const ERROR_TYPE_LABELS: Record<string, string> = {
 export function CorrectionView({
   result, rawError, loading, saving, savedSessionId, onCorrect, onSave,
 }: CorrectionViewProps) {
+  const { lastCorrectionLevel } = useSettingsStore()
   const [text, setText] = useState('')
-  const [level, setLevel] = useState<CEFRLevel>('B1')
+  const [level, setLevel] = useState<CEFRLevel>(lastCorrectionLevel)
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-correction-history')
 

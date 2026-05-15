@@ -34,6 +34,7 @@ export interface OllamaConfig {
   url: string
   port: number
   model: string
+  keepAlive: number  // segundos; -1 = indefinido, 0 = descargar inmediatamente
 }
 
 export interface ModelParams {

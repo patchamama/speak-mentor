@@ -42,6 +42,7 @@ export const useSettingsStore = create<SettingsState>()(
         url: 'http://localhost',
         port: 11434,
         model: 'translategemma:12b',
+        keepAlive: -1,
       },
       modelParams: DEFAULT_MODEL_PARAMS,
       prompts: {

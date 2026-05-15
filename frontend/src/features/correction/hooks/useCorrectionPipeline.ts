@@ -135,7 +135,7 @@ export function useCorrectionPipeline() {
           systemOverride: prompts.correctionSystem,
           modelParams,
         })
-        const rawStr = await callOllama(ollama, built, ollama.model)
+        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
         correctionData = CorrectionResponseSchema.parse(JSON.parse(rawStr))
         updatePass('correction', {
           status: 'done',
@@ -154,7 +154,7 @@ export function useCorrectionPipeline() {
       // ── PASS 1.5: Verification of corrected text ──────────────────
       try {
         const verifyBuilt = buildPrompt({ mode: 'verification', correctedText: correctionData.corrected, modelParams })
-        const verifyRaw = await callOllama(ollama, verifyBuilt, ollama.model)
+        const verifyRaw = await callOllama(ollama, verifyBuilt, ollama.model, ollama.keepAlive)
         const verifyResult = JSON.parse(verifyRaw) as { ok: boolean; fixed: string | null }
         if (!verifyResult.ok && verifyResult.fixed) {
           correctionData = { ...correctionData, corrected: verifyResult.fixed }
@@ -178,7 +178,7 @@ export function useCorrectionPipeline() {
             systemOverride: prompts.vocabularySystem,
             modelParams,
           })
-          const rawStr = await callOllama(ollama, built, ollama.model)
+          const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
           const data = VocabularyResponseSchema.parse(JSON.parse(rawStr))
           updatePass('vocabulary', { status: 'done', data, elapsedMs: Date.now() - t1 })
         } catch (err) {
@@ -210,7 +210,7 @@ export function useCorrectionPipeline() {
             systemOverride: prompts.exercisesSystem,
             modelParams,
           })
-          const rawStr = await callOllama(ollama, built, ollama.model)
+          const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
           const data = ExercisesResponseSchema.parse(JSON.parse(rawStr))
           updatePass('exercises', { status: 'done', data, elapsedMs: Date.now() - t2 })
         } catch (err) {

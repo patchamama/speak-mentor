@@ -30,7 +30,7 @@ const PASS_INFO: Record<CorrectionPassId, { label: string; description: string }
   },
   exercises: {
     label: 'Ejercicios personalizados',
-    description: 'Crea 3-5 ejercicios dirigidos exactamente a los errores encontrados en el texto.',
+    description: 'Crea ~10 ejercicios dirigidos exactamente a los tipos de errores encontrados en el texto.',
   },
 }
 
@@ -190,6 +190,23 @@ export function SettingsView() {
                 Probá la conexión para cargar los modelos disponibles.
               </p>
             )}
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="keepAlive">
+              Keep-alive del modelo
+            </label>
+            <select id="keepAlive" className={inputClass} {...regConn('keepAlive', { valueAsNumber: true })}>
+              <option value={-1}>Indefinido (recomendado para pipeline)</option>
+              <option value={3600}>1 hora</option>
+              <option value={1800}>30 minutos</option>
+              <option value={600}>10 minutos</option>
+              <option value={300}>5 minutos (default Ollama)</option>
+              <option value={0}>Descargar después de cada request</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Mantiene el modelo en VRAM entre requests del pipeline. "Indefinido" evita recargas entre passes.
+            </p>
           </div>
 
           <div className="flex gap-3">

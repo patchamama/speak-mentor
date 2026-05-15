@@ -73,6 +73,43 @@ export const useSettingsStore = create<SettingsState>()(
       setLastCorrectionLevel: (level) => set({ lastCorrectionLevel: level }),
       setLastTranslationLevel: (level) => set({ lastTranslationLevel: level }),
     }),
-    { name: 'speak-mentor-settings' }
+    {
+      name: 'speak-mentor-settings',
+      version: 3,
+      migrate: (persisted, version) => {
+        const p = persisted as Partial<SettingsState>
+        // v0→v3: reset all prompts to latest defaults (new templates added)
+        if (version < 3) {
+          return {
+            ...p,
+            prompts: {
+              correctionSystem: CORRECTION_SYSTEM_TEMPLATE,
+              translationSystem: TRANSLATION_SYSTEM_TEMPLATE,
+              vocabularySystem: VOCABULARY_SYSTEM_TEMPLATE,
+              exercisesSystem: EXERCISES_SYSTEM_TEMPLATE,
+            },
+            pipeline: DEFAULT_PIPELINE_CONFIG,
+          }
+        }
+        return p
+      },
+      merge: (persisted, current) => {
+        const p = persisted as Partial<SettingsState>
+        return {
+          ...current,
+          ...p,
+          prompts: {
+            ...current.prompts,
+            ...(p.prompts ?? {}),
+            vocabularySystem: p.prompts?.vocabularySystem || VOCABULARY_SYSTEM_TEMPLATE,
+            exercisesSystem: p.prompts?.exercisesSystem || EXERCISES_SYSTEM_TEMPLATE,
+          },
+          pipeline: {
+            ...current.pipeline,
+            ...(p.pipeline ?? {}),
+          },
+        }
+      },
+    }
   )
 )

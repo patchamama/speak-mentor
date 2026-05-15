@@ -10,7 +10,7 @@ dev-frontend:
 	cd frontend && npm run dev
 
 dev-backend:
-	cd backend && FLASK_APP=wsgi:app FLASK_ENV=development .venv/bin/flask run --port 5000
+	cd backend && FLASK_APP=wsgi:app FLASK_ENV=development .venv/bin/flask run --port 5001
 
 dev:
 	make -j2 dev-frontend dev-backend

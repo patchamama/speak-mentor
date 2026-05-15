@@ -9,5 +9,5 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     CORS_ORIGINS = os.environ.get(
-        'CORS_ORIGINS', 'http://localhost:5173'
+        'CORS_ORIGINS', 'http://localhost:5173,http://localhost:5174'
     ).split(',')

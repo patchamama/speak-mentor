@@ -33,7 +33,7 @@ if [ ! -d ".venv" ]; then
   .venv/bin/pip install -r requirements.txt -q
 fi
 
-FLASK_APP=wsgi:app .venv/bin/flask run --port 5000
+FLASK_APP=wsgi:app .venv/bin/flask run --port 5001
 
 # If Flask exits, kill Ollama too
 kill $OLLAMA_PID 2>/dev/null || true

@@ -113,7 +113,9 @@ pip install -r requirements.txt
 FLASK_APP=wsgi:app flask run --port 5000
 ```
 
-API runs at `http://localhost:5000`. On first run, SQLite database is created automatically at `backend/instance/speak_mentor.db`.
+API runs at `http://localhost:5001`. On first run, SQLite database is created automatically at `backend/instance/speak_mentor.db`.
+
+> **Note (macOS):** port 5000 is occupied by AirPlay Receiver (ControlCenter). Flask runs on 5001 to avoid the conflict.
 
 ### 5. Both at once (requires `make`)
 

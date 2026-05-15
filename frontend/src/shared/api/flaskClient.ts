@@ -1,7 +1,7 @@
 import ky from 'ky'
 import type { Session } from '@/shared/types'
 
-const api = ky.create({ prefixUrl: 'http://localhost:5000/api', timeout: 10000 })
+const api = ky.create({ prefixUrl: 'http://localhost:5001/api', timeout: 10000 })
 
 export async function saveSession(session: Omit<Session, 'id' | 'created_at'>): Promise<{ session_id: number }> {
   return api.post('sessions', { json: session }).json()

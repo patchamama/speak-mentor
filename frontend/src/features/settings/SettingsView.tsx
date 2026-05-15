@@ -9,12 +9,13 @@ import type { OllamaConfig, ModelParams } from '@/shared/types'
 
 const DEFAULT_MODEL = 'translategemma:12b'
 
-type SettingsTab = 'connection' | 'params' | 'prompts'
+type SettingsTab = 'connection' | 'params' | 'prompts' | 'terminal'
 
 const TAB_LABELS: Record<SettingsTab, string> = {
   connection: 'Conexión',
   params: 'Parámetros',
   prompts: 'Prompts',
+  terminal: 'Terminal',
 }
 
 const inputClass =
@@ -240,6 +241,71 @@ export function SettingsView() {
             </Button>
           </div>
         </form>
+      )}
+
+      {/* ── Terminal ────────────────────────────────────────────────────────── */}
+      {tab === 'terminal' && (
+        <div className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Ollama debe iniciarse con <code className="bg-muted px-1 rounded text-xs">OLLAMA_ORIGINS=*</code> para
+            permitir peticiones desde el navegador. Usá los comandos de tu sistema operativo.
+          </p>
+
+          {([
+            {
+              os: 'macOS',
+              icon: '',
+              kill: 'pkill -f ollama',
+              run: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
+            },
+            {
+              os: 'Linux',
+              icon: '',
+              kill: 'pkill -f ollama',
+              run: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
+            },
+            {
+              os: 'Windows (PowerShell)',
+              icon: '',
+              kill: 'Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue',
+              run: '$env:OLLAMA_HOST="0.0.0.0:11434"; $env:OLLAMA_ORIGINS="*"; ollama serve',
+            },
+            {
+              os: 'Windows (CMD)',
+              icon: '',
+              kill: 'taskkill /F /IM ollama.exe 2>nul',
+              run: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && ollama serve',
+            },
+          ] as const).map(({ os, kill, run }) => (
+            <div key={os} className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-semibold">{os}</p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">1. Detener instancia previa</p>
+                <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{kill}</pre>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">2. Iniciar con CORS habilitado</p>
+                <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{run}</pre>
+              </div>
+            </div>
+          ))}
+
+          <div className="rounded-lg bg-muted/50 p-4 text-sm space-y-1">
+            <p className="font-medium">Verificar que funciona</p>
+            <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/tags</pre>
+            <p className="text-xs text-muted-foreground">Debe devolver un JSON con los modelos instalados.</p>
+          </div>
+
+          <div className="border-t pt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Código fuente:</span>
+            <a
+              href="https://github.com/mandymozart/speak-mentor"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground hover:underline font-medium"
+            >
+              github.com/mandymozart/speak-mentor
+            </a>
+          </div>
+        </div>
       )}
 
       {/* ── Prompts ─────────────────────────────────────────────────────────── */}

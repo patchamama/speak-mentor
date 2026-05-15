@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
+import { useElapsedTimer } from '@/shared/hooks/useElapsedTimer'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
@@ -57,6 +58,7 @@ export function TranslationView({
   }, [handleSubmit])
 
   const handleSave = useCallback(() => onSave(text, sourceLang, targetLang, level), [text, sourceLang, targetLang, level, onSave])
+  const elapsed = useElapsedTimer(loading)
 
   return (
     <div className="space-y-6">
@@ -114,7 +116,7 @@ export function TranslationView({
         />
         <div className="flex items-center gap-3">
           <Button onClick={handleSubmit} disabled={loading || !text.trim()} aria-busy={loading}>
-            {loading ? <><Spinner className="mr-2" />Traduciendo...</> : 'Traducir'}
+            {loading ? <><Spinner className="mr-2" />Traduciendo... {elapsed}s</> : 'Traducir'}
           </Button>
           {result && !savedSessionId && (
             <Button variant="outline" onClick={handleSave} disabled={saving}>

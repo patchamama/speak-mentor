@@ -75,11 +75,11 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'speak-mentor-settings',
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         const p = persisted as Partial<SettingsState>
-        // v0→v3: reset all prompts to latest defaults (new templates added)
-        if (version < 3) {
+        // v0→v4: reset all prompts to latest defaults
+        if (version < 4) {
           return {
             ...p,
             prompts: {

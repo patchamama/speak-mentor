@@ -36,12 +36,32 @@ interface Segment {
 function buildSegments(text: string, errors: CorrectionResponse['errors']): Segment[] {
   type Span = { start: number; end: number; idx: number }
   const spans: Span[] = []
+  const used = new Set<number>() // track already-claimed character positions
 
   errors.forEach((err, idx) => {
-    if ((err as { position_unreliable?: boolean }).position_unreliable) return
-    const pos = err.position
-    if (!pos) return
-    spans.push({ start: pos.start, end: pos.end, idx })
+    const needle = err.original?.trim()
+    if (!needle) return
+
+    // Find the leftmost occurrence of `needle` in `text` that doesn't overlap already claimed spans
+    let searchFrom = 0
+    while (searchFrom < text.length) {
+      const pos = text.indexOf(needle, searchFrom)
+      if (pos === -1) break
+
+      const end = pos + needle.length
+      // Check for overlap with already claimed positions
+      let overlaps = false
+      for (let i = pos; i < end; i++) {
+        if (used.has(i)) { overlaps = true; break }
+      }
+
+      if (!overlaps) {
+        for (let i = pos; i < end; i++) used.add(i)
+        spans.push({ start: pos, end, idx })
+        break
+      }
+      searchFrom = pos + 1
+    }
   })
 
   spans.sort((a, b) => a.start - b.start)

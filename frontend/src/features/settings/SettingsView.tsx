@@ -366,50 +366,72 @@ export function SettingsView() {
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
             Ollama debe iniciarse con <code className="bg-muted px-1 rounded text-xs">OLLAMA_ORIGINS=*</code> para
-            permitir peticiones desde el navegador. Usá los comandos de tu sistema operativo.
+            permitir peticiones desde el navegador. El comando recomendado incluye optimizaciones de rendimiento.
           </p>
 
+          {/* Comandos por OS */}
           {([
             {
-              os: 'macOS',
-              icon: '',
+              os: 'macOS / Linux',
               kill: 'pkill -f ollama',
-              run: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
-            },
-            {
-              os: 'Linux',
-              icon: '',
-              kill: 'pkill -f ollama',
-              run: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
+              runBasic: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
+              runFull: 'OLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_KEEP_ALIVE=-1 \\\nollama serve',
             },
             {
               os: 'Windows (PowerShell)',
-              icon: '',
               kill: 'Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue',
-              run: '$env:OLLAMA_HOST="0.0.0.0:11434"; $env:OLLAMA_ORIGINS="*"; ollama serve',
+              runBasic: '$env:OLLAMA_HOST="0.0.0.0:11434"; $env:OLLAMA_ORIGINS="*"; ollama serve',
+              runFull: '$env:OLLAMA_HOST="0.0.0.0:11434"\n$env:OLLAMA_ORIGINS="*"\n$env:OLLAMA_FLASH_ATTENTION="1"\n$env:OLLAMA_KV_CACHE_TYPE="q8_0"\n$env:OLLAMA_NUM_PARALLEL="2"\n$env:OLLAMA_KEEP_ALIVE="-1"\nollama serve',
             },
             {
               os: 'Windows (CMD)',
-              icon: '',
               kill: 'taskkill /F /IM ollama.exe 2>nul',
-              run: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && ollama serve',
+              runBasic: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && ollama serve',
+              runFull: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_KV_CACHE_TYPE=q8_0 && set OLLAMA_NUM_PARALLEL=2 && set OLLAMA_KEEP_ALIVE=-1 && ollama serve',
             },
-          ] as const).map(({ os, kill, run }) => (
+          ] as const).map(({ os, kill, runBasic, runFull }) => (
             <div key={os} className="rounded-lg border p-4 space-y-3">
               <p className="text-sm font-semibold">{os}</p>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">1. Detener instancia previa</p>
                 <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{kill}</pre>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">2. Iniciar con CORS habilitado</p>
-                <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{run}</pre>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">2. Mínimo (solo CORS)</p>
+                <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{runBasic}</pre>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">3. Recomendado (rendimiento óptimo)</p>
+                <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{runFull}</pre>
               </div>
             </div>
           ))}
 
-          <div className="rounded-lg bg-muted/50 p-4 text-sm space-y-1">
-            <p className="font-medium">Verificar que funciona</p>
-            <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/tags</pre>
-            <p className="text-xs text-muted-foreground">Debe devolver un JSON con los modelos instalados.</p>
+          {/* Variables de entorno */}
+          <div className="rounded-lg border p-4 space-y-3">
+            <p className="text-sm font-semibold">Variables de entorno — referencia</p>
+            <div className="space-y-2 text-xs">
+              {([
+                { name: 'OLLAMA_ORIGINS', value: '"*"', desc: 'CORS — permite peticiones desde el navegador' },
+                { name: 'OLLAMA_KEEP_ALIVE', value: '-1', desc: 'Mantiene el modelo en VRAM indefinidamente (evita recargas entre passes)' },
+                { name: 'OLLAMA_KV_CACHE_TYPE', value: 'q8_0', desc: '50% menos VRAM con mínima pérdida de calidad. Requiere Flash Attention' },
+                { name: 'OLLAMA_FLASH_ATTENTION', value: '1', desc: 'Activa Flash Attention (Apple Silicon, NVIDIA Pascal+, AMD ROCm)' },
+                { name: 'OLLAMA_NUM_PARALLEL', value: '2', desc: 'Requests concurrentes al mismo modelo sin descargarlo' },
+                { name: 'OLLAMA_MAX_LOADED_MODELS', value: '1', desc: 'Modelos simultáneos en VRAM (reducir si hay poca memoria)' },
+              ] as const).map(({ name, value, desc }) => (
+                <div key={name} className="grid grid-cols-[auto_auto_1fr] gap-x-3 items-start">
+                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{name}</code>
+                  <code className="bg-primary/10 px-1.5 py-0.5 rounded font-mono text-primary">{value}</code>
+                  <span className="text-muted-foreground pt-0.5">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Verificar */}
+          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+            <p className="text-sm font-medium">Verificar que funciona</p>
+            <div className="space-y-1">
+              <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/tags</pre>
+              <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/ps</pre>
+            </div>
+            <p className="text-xs text-muted-foreground"><code className="bg-muted px-1 rounded">/api/tags</code> lista modelos instalados · <code className="bg-muted px-1 rounded">/api/ps</code> muestra el modelo actualmente cargado en VRAM.</p>
           </div>
 
           <div className="border-t pt-4 flex items-center gap-2 text-sm text-muted-foreground">

@@ -9,10 +9,33 @@
 
 set -euo pipefail
 
+OLLAMA_PORT=11434
+
 # ── 1. Stop any running Ollama instance ───────────────────────────────────────
 echo "Stopping existing Ollama instance..."
-pkill -f ollama 2>/dev/null || true
-sleep 1
+
+# Kill the CLI server process
+pkill -f "ollama serve" 2>/dev/null || true
+pkill -f "ollama runner" 2>/dev/null || true
+
+# On macOS, Ollama also runs as a menu-bar app (Ollama.app) — kill it too
+if [[ "$(uname)" == "Darwin" ]]; then
+  osascript -e 'quit app "Ollama"' 2>/dev/null || true
+  pkill -x "Ollama" 2>/dev/null || true
+fi
+
+# Wait until the port is actually free (up to 10 seconds)
+for i in $(seq 1 10); do
+  if ! lsof -iTCP:${OLLAMA_PORT} -sTCP:LISTEN -t &>/dev/null; then
+    break
+  fi
+  if [[ $i -eq 10 ]]; then
+    echo "Port ${OLLAMA_PORT} still in use after 10s. Forcing kill..."
+    lsof -iTCP:${OLLAMA_PORT} -sTCP:LISTEN -t 2>/dev/null | xargs kill -9 2>/dev/null || true
+    sleep 1
+  fi
+  sleep 1
+done
 
 # ── 2. Detect hardware and set optimal KV cache type ─────────────────────────
 # Flash Attention is required for q8_0/q4_0 KV cache quantization.

@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { saveSession } from '@/shared/api/flaskClient'
 import { ErrorHighlight, ERROR_COLORS_MAP } from './components/ErrorHighlight'
 import { ErrorPanel } from './components/ErrorPanel'
 import { TipsList } from './components/TipsList'
@@ -34,11 +36,13 @@ const ERROR_TYPE_LABELS: Record<string, string> = {
 }
 
 export function CorrectionContainer() {
-  const { lastCorrectionLevel, pipeline } = useSettingsStore()
+  const { lastCorrectionLevel, pipeline, ollama } = useSettingsStore()
   const [text, setText] = useState('')
   const [level, setLevel] = useState<CEFRLevel>(lastCorrectionLevel)
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
   const [advanced, setAdvanced] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savedSessionId, setSavedSessionId] = useState<number | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-correction-history')
 
   const { state, run, isRunning, activePasses } = useCorrectionPipeline()
@@ -48,9 +52,42 @@ export function CorrectionContainer() {
   const handleSubmit = useCallback(() => {
     if (!text.trim() || isRunning) return
     setActiveErrorIdx(null)
+    setSavedSessionId(null)
     push(text)
     run(text, level, 'es', advanced ? pipeline.passes : ['correction'])
   }, [text, level, isRunning, run, push, advanced, pipeline.passes])
+
+  const handleSave = useCallback(async () => {
+    const correctionData = state.correction.data
+    if (!correctionData) return
+    setSaving(true)
+    try {
+      const { session_id } = await saveSession({
+        mode: 'correction',
+        source_lang: 'de',
+        target_lang: 'de',
+        level,
+        input_text: text,
+        output_text: correctionData.corrected,
+        raw_llm: JSON.stringify(correctionData),
+        model: ollama.model,
+        errors: correctionData.errors.map((e) => ({
+          type: e.type,
+          original: e.original,
+          correction: e.correction,
+          severity: e.severity,
+          explanation: e.explanation,
+          rule_reference: e.rule_reference,
+        })),
+      })
+      setSavedSessionId(session_id)
+      toast.success('Sesión guardada en el historial')
+    } catch {
+      toast.error('Error al guardar la sesión')
+    } finally {
+      setSaving(false)
+    }
+  }, [state.correction.data, level, text, ollama.model])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -91,6 +128,14 @@ export function CorrectionContainer() {
           <Button onClick={handleSubmit} disabled={isRunning || !text.trim()} aria-busy={isRunning}>
             {isRunning ? <><Spinner className="mr-2" />Analizando...</> : 'Corregir'}
           </Button>
+          {state.correction.status === 'done' && !savedSessionId && (
+            <Button variant="outline" onClick={handleSave} disabled={saving}>
+              {saving ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar'}
+            </Button>
+          )}
+          {savedSessionId && (
+            <span className="text-sm text-muted-foreground">✓ Guardado (#{savedSessionId})</span>
+          )}
           <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
             <div
               role="switch"

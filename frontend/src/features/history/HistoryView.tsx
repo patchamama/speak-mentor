@@ -19,8 +19,12 @@ const MODE_FILTER_OPTIONS = [
 ]
 
 
-export function HistoryView() {
-  const [tab, setTab] = useState<'sessions' | 'stats'>('sessions')
+interface HistoryViewProps {
+  initialTab?: 'sessions' | 'stats'
+}
+
+export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
+  const [tab, setTab] = useState<'sessions' | 'stats'>(initialTab)
   const [page, setPage] = useState(1)
   const [modeFilter, setModeFilter] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)

@@ -1,5 +1,9 @@
 import { HistoryView } from './HistoryView'
 
-export function HistoryContainer() {
-  return <HistoryView />
+interface HistoryContainerProps {
+  initialTab?: 'sessions' | 'stats'
+}
+
+export function HistoryContainer({ initialTab }: HistoryContainerProps) {
+  return <HistoryView initialTab={initialTab} />
 }

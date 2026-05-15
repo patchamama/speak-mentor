@@ -9,6 +9,8 @@ const ERROR_TYPE_COLORS: Record<string, string> = {
   word_order: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
   tense: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
   gender: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
+  spelling: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+  separable_verb: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300',
 }
 
 function ExampleCard({ example }: { example: CommonErrorCategory['examples'][number] }) {
@@ -90,7 +92,7 @@ export function CommonErrorsView() {
       <div>
         <h2 className="text-2xl font-bold">Errores frecuentes</h2>
         <p className="text-muted-foreground mt-1">
-          Los 10 errores más comunes de hispanohablantes al aprender alemán — {totalExamples} ejemplos
+          Los errores más comunes de hispanohablantes al aprender alemán — {totalExamples} ejemplos
           con explicación, regla y truco mnemotécnico.
         </p>
       </div>

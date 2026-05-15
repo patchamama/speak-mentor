@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -6,16 +7,35 @@ import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import type { OllamaConfig } from '@/shared/types'
 
+const DEFAULT_MODEL = 'translategemma:12b'
+
 export function SettingsView() {
   const { ollama, setOllama } = useSettingsStore()
   const { models, loading, error, testConnection } = useOllamaModels()
 
-  const { register, handleSubmit } = useForm<OllamaConfig>({ defaultValues: ollama })
+  const { register, handleSubmit, setValue, watch } = useForm<OllamaConfig>({
+    defaultValues: ollama,
+  })
+
+  const selectedModel = watch('model')
+
+  // When models load, auto-select translategemma:12b if present; otherwise keep current
+  useEffect(() => {
+    if (models.length === 0) return
+    const hasDefault = models.some((m) => m.name === DEFAULT_MODEL)
+    const currentIsListed = models.some((m) => m.name === selectedModel)
+    if (!currentIsListed && hasDefault) {
+      setValue('model', DEFAULT_MODEL)
+    }
+  }, [models, selectedModel, setValue])
 
   const onSave = (data: OllamaConfig) => {
     setOllama({ ...data, port: Number(data.port) })
     toast.success('Configuración guardada')
   }
+
+  const inputClass =
+    'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
   return (
     <div className="max-w-lg space-y-6">
@@ -24,11 +44,7 @@ export function SettingsView() {
       <form onSubmit={handleSubmit(onSave)} className="space-y-4">
         <div className="space-y-1">
           <label className="text-sm font-medium" htmlFor="url">URL</label>
-          <input
-            id="url"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            {...register('url', { required: true })}
-          />
+          <input id="url" className={inputClass} {...register('url', { required: true })} />
         </div>
 
         <div className="space-y-1">
@@ -36,26 +52,44 @@ export function SettingsView() {
           <input
             id="port"
             type="number"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={inputClass}
             {...register('port', { required: true, valueAsNumber: true })}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="model">Modelo</label>
-          <input
-            id="model"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            {...register('model', { required: true })}
-          />
-          {models.length > 0 && (
-            <ul className="mt-1 space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium" htmlFor="model">Modelo</label>
+            {models.length > 0 && (
+              <span className="text-xs text-muted-foreground">{models.length} instalados</span>
+            )}
+          </div>
+
+          {models.length > 0 ? (
+            <select
+              id="model"
+              className={inputClass}
+              {...register('model', { required: true })}
+            >
               {models.map((m) => (
-                <li key={m.name} className="text-xs text-muted-foreground">
+                <option key={m.name} value={m.name}>
                   {m.name}
-                </li>
+                </option>
               ))}
-            </ul>
+            </select>
+          ) : (
+            <input
+              id="model"
+              className={inputClass}
+              placeholder={DEFAULT_MODEL}
+              {...register('model', { required: true })}
+            />
+          )}
+
+          {models.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Probá la conexión para cargar los modelos disponibles.
+            </p>
           )}
         </div>
 
@@ -72,9 +106,7 @@ export function SettingsView() {
           </Button>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </form>
     </div>
   )

@@ -151,6 +151,19 @@ export function useCorrectionPipeline() {
         return // abort pipeline on pass 1 failure
       }
 
+      // ── PASS 1.5: Verification of corrected text ──────────────────
+      try {
+        const verifyBuilt = buildPrompt({ mode: 'verification', correctedText: correctionData.corrected, modelParams })
+        const verifyRaw = await callOllama(ollama, verifyBuilt, ollama.model)
+        const verifyResult = JSON.parse(verifyRaw) as { ok: boolean; fixed: string | null }
+        if (!verifyResult.ok && verifyResult.fixed) {
+          correctionData = { ...correctionData, corrected: verifyResult.fixed }
+          updatePass('correction', { data: correctionData })
+        }
+      } catch {
+        // verification is best-effort — don't abort the pipeline
+      }
+
       // ── PASS 2: Vocabulary (optional) ─────────────────────────────
       if (passes.includes('vocabulary') && correctionData) {
         updatePass('vocabulary', { status: 'running' })

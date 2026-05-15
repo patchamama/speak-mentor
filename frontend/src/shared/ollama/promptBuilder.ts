@@ -3,6 +3,7 @@ import { CORRECTION_SYSTEM_TEMPLATE } from './templates/correction-system'
 import { TRANSLATION_SYSTEM_TEMPLATE } from './templates/translation-system'
 import { VOCABULARY_SYSTEM_TEMPLATE } from './templates/vocabulary-system'
 import { EXERCISES_SYSTEM_TEMPLATE } from './templates/exercises-system'
+import { VERIFICATION_SYSTEM_TEMPLATE } from './templates/verification-system'
 import { DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
 
 interface CorrectionPromptInput {
@@ -34,6 +35,12 @@ interface ExercisesPromptInput {
   modelParams?: Partial<ModelParams>
 }
 
+interface VerificationPromptInput {
+  mode: 'verification'
+  correctedText: string
+  modelParams?: Partial<ModelParams>
+}
+
 interface TranslationPromptInput {
   mode: 'translation'
   text: string
@@ -49,6 +56,7 @@ export type PromptInput =
   | CorrectionPromptInput
   | VocabularyPromptInput
   | ExercisesPromptInput
+  | VerificationPromptInput
   | TranslationPromptInput
 
 export interface BuiltPrompt {
@@ -76,7 +84,7 @@ function applyBaseVars(template: string, level: CEFRLevel, lang: Lang): string {
 }
 
 export function buildPrompt(input: PromptInput): BuiltPrompt {
-  const explanationLang = input.explanationLang ?? 'es'
+  const explanationLang = ('explanationLang' in input ? input.explanationLang : undefined) ?? 'es'
   const params = { ...DEFAULT_MODEL_PARAMS, ...input.modelParams }
   const baseOpts = {
     format: 'json' as const,
@@ -121,6 +129,15 @@ export function buildPrompt(input: PromptInput): BuiltPrompt {
       system,
       user: `LEVEL: ${input.level}\nCORRECTED_TEXT: ${input.correctedText}\nERRORS:\n${errorsJson}\nEXPLANATION_LANG: ${explanationLang}`,
       ...baseOpts,
+    }
+  }
+
+  if (input.mode === 'verification') {
+    return {
+      system: VERIFICATION_SYSTEM_TEMPLATE,
+      user: `TEXT: ${input.correctedText}`,
+      ...baseOpts,
+      options: { ...baseOpts.options, temperature: 0 },
     }
   }
 

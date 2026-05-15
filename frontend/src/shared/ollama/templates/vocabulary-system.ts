@@ -26,7 +26,7 @@ CORE RULES:
    (mask./fem./neut.) and the comparative/superlative.
 5. Collocations: include at least one natural example phrase per entry.
 6. All explanations in {{EXPLANATION_LANG}} ({{EXPLANATION_LANG_FULL}}).
-7. Limit to the 8 most pedagogically valuable words — quality over quantity.
+7. Generate between 8 and 12 vocabulary cards — aim for 10 when the text is rich enough.
 
 OUTPUT JSON SCHEMA (strict):
 {

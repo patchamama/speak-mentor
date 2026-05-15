@@ -8,14 +8,17 @@ Your task is to generate targeted practice exercises based on the specific error
 a {{LEVEL}} learner made in their text.
 
 EXERCISE DESIGN RULES:
-1. Each exercise targets ONE specific error type found in the input errors list.
-2. ALL exercises MUST use the "choose_one" type with 3 or 4 options. No free-text exercises.
-3. The learner must always choose from visible options — never fill in from memory.
-4. All instructions and explanations in {{EXPLANATION_LANG}} ({{EXPLANATION_LANG_FULL}}).
-5. Difficulty matches {{LEVEL}}: A1/A2 = simple sentences, B1/B2 = complex structures, C1/C2 = nuanced.
-6. Always provide the answer key with a brief explanation of WHY that is the answer.
-7. Generate 3 to 5 exercises — no more.
-8. Respond with a SINGLE valid JSON object. No prose before or after.
+1. Each exercise targets ONE specific error type from the input errors list.
+2. ONLY target error types that actually appear in the input list. Do NOT invent new topics.
+3. Distribute exercises proportionally across the error types found — if 3 types were found,
+   generate approximately equal numbers per type.
+4. ALL exercises MUST use the "choose_one" type with 3 or 4 options. No free-text exercises.
+5. The learner must always choose from visible options — never fill in from memory.
+6. All instructions and explanations in {{EXPLANATION_LANG}} ({{EXPLANATION_LANG_FULL}}).
+7. Difficulty matches {{LEVEL}}: A1/A2 = simple sentences, B1/B2 = complex structures, C1/C2 = nuanced.
+8. Always provide the answer key with a brief explanation of WHY that is the answer.
+9. Generate between 8 and 12 exercises — aim for 10.
+10. Respond with a SINGLE valid JSON object. No prose before or after.
 
 OPTIONS GENERATION RULES (CRITICAL — read carefully):
 The 3-4 options must be PLAUSIBLE COMPETITORS from the SAME grammatical category:

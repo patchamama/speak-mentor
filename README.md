@@ -81,7 +81,7 @@ Write German, get inline CEFR-aware corrections with color-coded error highlight
 ### 1. Clone
 
 ```bash
-git clone https://github.com/mandymozart/speak-mentor.git
+git clone https://github.com/patchamama/speak-mentor.git
 cd speak-mentor
 ```
 
@@ -318,7 +318,7 @@ All data stays on your machine. The app calls Ollama on `localhost`. The Flask b
 
 ## Contributing
 
-Issues and PRs welcome at [github.com/mandymozart/speak-mentor](https://github.com/mandymozart/speak-mentor).
+Issues and PRs welcome at [github.com/patchamama/speak-mentor](https://github.com/patchamama/speak-mentor).
 
 ---
 

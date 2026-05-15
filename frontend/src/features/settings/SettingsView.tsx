@@ -297,12 +297,12 @@ export function SettingsView() {
           <div className="border-t pt-4 flex items-center gap-2 text-sm text-muted-foreground">
             <span>Código fuente:</span>
             <a
-              href="https://github.com/mandymozart/speak-mentor"
+              href="https://github.com/patchamama/speak-mentor"
               target="_blank"
               rel="noopener noreferrer"
               className="text-foreground hover:underline font-medium"
             >
-              github.com/mandymozart/speak-mentor
+              github.com/patchamama/speak-mentor
             </a>
           </div>
         </div>

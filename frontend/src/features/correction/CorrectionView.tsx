@@ -63,7 +63,7 @@ export function CorrectionView({
           aria-label="Texto en alemán para corregir"
         />
         <div className="flex items-center gap-3">
-          <Button onClick={handleSubmit} disabled={loading || !text.trim()}>
+          <Button onClick={handleSubmit} disabled={loading || !text.trim()} aria-busy={loading}>
             {loading ? <><Spinner className="mr-2" />Corrigiendo...</> : 'Corregir'}
           </Button>
           {result && !savedSessionId && (
@@ -88,7 +88,7 @@ export function CorrectionView({
 
       {/* Results */}
       {result && (
-        <div className="space-y-6">
+        <div className="space-y-6" aria-live="polite" aria-label="Resultados de corrección">
           {/* Level assessment */}
           <div className="flex items-center gap-3 text-sm">
             <span className="text-muted-foreground">Nivel detectado:</span>

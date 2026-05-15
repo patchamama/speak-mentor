@@ -100,7 +100,7 @@ export function TranslationView({
           aria-label={`Texto en ${LANG_LABELS[sourceLang]} para traducir`}
         />
         <div className="flex items-center gap-3">
-          <Button onClick={handleSubmit} disabled={loading || !text.trim()}>
+          <Button onClick={handleSubmit} disabled={loading || !text.trim()} aria-busy={loading}>
             {loading ? <><Spinner className="mr-2" />Traduciendo...</> : 'Traducir'}
           </Button>
           {result && !savedSessionId && (
@@ -125,7 +125,7 @@ export function TranslationView({
 
       {/* Result */}
       {result && (
-        <div className="space-y-4">
+        <div className="space-y-4" aria-live="polite" aria-label="Resultado de traducción">
           {/* Primary translation */}
           <div className="rounded-lg border bg-muted/30 p-5 space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#1e293b"/>
+  <!-- Speech bubble body -->
+  <rect x="5" y="7" width="22" height="14" rx="4" fill="#38bdf8"/>
+  <!-- Speech bubble tail -->
+  <polygon points="9,21 6,27 14,21" fill="#38bdf8"/>
+  <!-- Text lines inside bubble (DE letters idea) -->
+  <rect x="8" y="11" width="6" height="2" rx="1" fill="#1e293b" opacity="0.85"/>
+  <rect x="8" y="15" width="9" height="2" rx="1" fill="#1e293b" opacity="0.85"/>
+  <rect x="16" y="11" width="8" height="2" rx="1" fill="#0ea5e9" opacity="0.6"/>
+  <rect x="19" y="15" width="5" height="2" rx="1" fill="#0ea5e9" opacity="0.6"/>
+</svg>

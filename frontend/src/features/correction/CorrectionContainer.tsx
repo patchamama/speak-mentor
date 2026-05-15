@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -7,6 +7,7 @@ import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { saveSession } from '@/shared/api/flaskClient'
+import { useFaviconProgress } from '@/shared/hooks/useFaviconProgress'
 import { ErrorHighlight, ERROR_COLORS_MAP } from './components/ErrorHighlight'
 import { ErrorPanel } from './components/ErrorPanel'
 import { TipsList } from './components/TipsList'
@@ -99,6 +100,21 @@ export function CorrectionContainer() {
   const correctionResult = state.correction.data
   const vocabResult = state.vocabulary.data
   const exercisesResult = state.exercises.data
+
+  // Favicon progress: correction 0-50%, vocab 50-75%, exercises 75-100%
+  const faviconProgress = useMemo(() => {
+    if (!isRunning && state.correction.status === 'idle') return null
+    if (!isRunning) return null
+    let p = 0
+    if (state.correction.status === 'running') p = 10
+    if (state.correction.status === 'done') p = 50
+    if (state.vocabulary.status === 'running') p = 55
+    if (state.vocabulary.status === 'done') p = 75
+    if (state.exercises.status === 'running') p = 80
+    if (state.exercises.status === 'done') p = 100
+    return p
+  }, [isRunning, state])
+  useFaviconProgress({ progress: faviconProgress, color: '#38bdf8' })
 
   return (
     <div className="space-y-6">

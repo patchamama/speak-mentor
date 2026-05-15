@@ -53,10 +53,10 @@ export default function App() {
       </header>
       <main className="container mx-auto px-6 py-8 max-w-5xl">
         <ErrorBoundary>
-          {page === 'correction' && <CorrectionContainer />}
-          {page === 'translation' && <TranslationContainer />}
-          {page === 'history' && <HistoryContainer />}
-          {page === 'settings' && <SettingsContainer />}
+          <div hidden={page !== 'correction'}><CorrectionContainer /></div>
+          <div hidden={page !== 'translation'}><TranslationContainer /></div>
+          <div hidden={page !== 'history'}><HistoryContainer /></div>
+          <div hidden={page !== 'settings'}><SettingsContainer /></div>
         </ErrorBoundary>
       </main>
       <Toaster />

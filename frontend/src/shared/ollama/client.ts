@@ -24,7 +24,7 @@ export async function fetchOllamaModels(config: OllamaConfig): Promise<OllamaMod
   return data.models ?? []
 }
 
-async function callOllama(config: OllamaConfig, prompt: BuiltPrompt, model: string): Promise<string> {
+export async function callOllama(config: OllamaConfig, prompt: BuiltPrompt, model: string): Promise<string> {
   const response = await ky.post(`${getBaseUrl(config)}/api/chat`, {
     json: {
       model,

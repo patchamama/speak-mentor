@@ -5,24 +5,40 @@ import { useSettingsStore, DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
 import { useOllamaModels } from './hooks/useOllamaModels'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
-import type { OllamaConfig, ModelParams } from '@/shared/types'
+import type { OllamaConfig, ModelParams, CorrectionPassId } from '@/shared/types'
 
 const DEFAULT_MODEL = 'translategemma:12b'
 
-type SettingsTab = 'connection' | 'params' | 'prompts' | 'terminal'
+type SettingsTab = 'connection' | 'params' | 'pipeline' | 'prompts' | 'terminal'
 
 const TAB_LABELS: Record<SettingsTab, string> = {
   connection: 'Conexión',
   params: 'Parámetros',
+  pipeline: 'Pipeline',
   prompts: 'Prompts',
   terminal: 'Terminal',
+}
+
+const PASS_INFO: Record<CorrectionPassId, { label: string; description: string }> = {
+  correction: {
+    label: 'Corrección gramatical',
+    description: 'Detecta y explica errores en el texto. Siempre activo.',
+  },
+  vocabulary: {
+    label: 'Vocabulario enriquecido',
+    description: 'Genera fichas de vocabulario con info gramatical completa (género, plural, conjugación irregular, verbos separables).',
+  },
+  exercises: {
+    label: 'Ejercicios personalizados',
+    description: 'Crea 3-5 ejercicios dirigidos exactamente a los errores encontrados en el texto.',
+  },
 }
 
 const inputClass =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function SettingsView() {
-  const { ollama, setOllama, modelParams, setModelParams, prompts, setPrompts, resetPrompts } =
+  const { ollama, setOllama, modelParams, setModelParams, prompts, setPrompts, resetPrompts, pipeline, setPipeline } =
     useSettingsStore()
   const { models, loading, error, testConnection } = useOllamaModels()
   const [tab, setTab] = useState<SettingsTab>('connection')
@@ -60,20 +76,51 @@ export function SettingsView() {
   }
 
   // ── Prompts ────────────────────────────────────────────────────────────────
-  const [correctionDraft, setCorrectionDraft] = useState(prompts.correctionSystem)
-  const [translationDraft, setTranslationDraft] = useState(prompts.translationSystem)
-  const [promptTab, setPromptTab] = useState<'correction' | 'translation'>('correction')
+  type PromptTabId = 'correction' | 'translation' | 'vocabulary' | 'exercises'
+  const [promptTab, setPromptTab] = useState<PromptTabId>('correction')
+  const [drafts, setDrafts] = useState({
+    correction: prompts.correctionSystem,
+    translation: prompts.translationSystem,
+    vocabulary: prompts.vocabularySystem,
+    exercises: prompts.exercisesSystem,
+  })
+
+  const setDraft = (tab: PromptTabId, value: string) =>
+    setDrafts((d) => ({ ...d, [tab]: value }))
+
+  const PROMPT_TAB_LABELS: Record<PromptTabId, string> = {
+    correction: 'Corrección',
+    translation: 'Traducción',
+    vocabulary: 'Vocabulario',
+    exercises: 'Ejercicios',
+  }
+
+  const PROMPT_TAB_VARS: Record<PromptTabId, string> = {
+    correction: '{{LEVEL}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}',
+    translation: '{{LEVEL}}, {{SOURCE_LANG}}, {{TARGET_LANG}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}',
+    vocabulary: '{{LEVEL}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}',
+    exercises: '{{LEVEL}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}',
+  }
 
   const onSavePrompts = () => {
-    setPrompts({ correctionSystem: correctionDraft, translationSystem: translationDraft })
+    setPrompts({
+      correctionSystem: drafts.correction,
+      translationSystem: drafts.translation,
+      vocabularySystem: drafts.vocabulary,
+      exercisesSystem: drafts.exercises,
+    })
     toast.success('Prompts guardados')
   }
 
   const onResetPrompts = () => {
     resetPrompts()
     const defaults = useSettingsStore.getState().prompts
-    setCorrectionDraft(defaults.correctionSystem)
-    setTranslationDraft(defaults.translationSystem)
+    setDrafts({
+      correction: defaults.correctionSystem,
+      translation: defaults.translationSystem,
+      vocabulary: defaults.vocabularySystem,
+      exercises: defaults.exercisesSystem,
+    })
     toast.success('Prompts restablecidos')
   }
 
@@ -243,6 +290,62 @@ export function SettingsView() {
         </form>
       )}
 
+      {/* ── Pipeline ────────────────────────────────────────────────────────── */}
+      {tab === 'pipeline' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-medium mb-1">Pasadas de análisis</h3>
+            <p className="text-xs text-muted-foreground">
+              Cada pasada lanza un prompt separado. Los resultados aparecen en tiempo real a medida
+              que se completan. La corrección siempre es la primera pasada.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {(['correction', 'vocabulary', 'exercises'] as CorrectionPassId[]).map((passId) => {
+              const info = PASS_INFO[passId]
+              const isCore = passId === 'correction'
+              const isActive = pipeline.passes.includes(passId)
+              return (
+                <div
+                  key={passId}
+                  className="flex items-start gap-4 rounded-lg border p-4 bg-card"
+                >
+                  <input
+                    type="checkbox"
+                    id={`pass-${passId}`}
+                    checked={isActive}
+                    disabled={isCore}
+                    onChange={(e) => {
+                      if (isCore) return
+                      const next = e.target.checked
+                        ? [...pipeline.passes, passId]
+                        : pipeline.passes.filter((p) => p !== passId)
+                      setPipeline({ passes: next })
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-border"
+                    aria-label={info.label}
+                  />
+                  <label htmlFor={`pass-${passId}`} className="space-y-0.5 cursor-pointer flex-1">
+                    <p className="text-sm font-medium">
+                      {info.label}
+                      {isCore && (
+                        <span className="ml-2 text-xs text-muted-foreground">(siempre activo)</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{info.description}</p>
+                  </label>
+                </div>
+              )
+            })}
+          </div>
+          <div className="rounded-md bg-muted px-4 py-3 text-xs text-muted-foreground space-y-1">
+            <p>⏱ Cada pasada adicional agrega ~30-90s dependiendo del modelo y el texto.</p>
+            <p>El vocabulario usa el texto <em>corregido</em> como entrada.</p>
+            <p>Los ejercicios solo se generan si hubo errores en la corrección.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Terminal ────────────────────────────────────────────────────────── */}
       {tab === 'terminal' && (
         <div className="space-y-6">
@@ -311,8 +414,8 @@ export function SettingsView() {
       {/* ── Prompts ─────────────────────────────────────────────────────────── */}
       {tab === 'prompts' && (
         <div className="space-y-4">
-          <div className="flex gap-1">
-            {(['correction', 'translation'] as const).map((p) => (
+          <div className="flex flex-wrap gap-1">
+            {(Object.keys(PROMPT_TAB_LABELS) as PromptTabId[]).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -321,27 +424,22 @@ export function SettingsView() {
                   promptTab === p ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {p === 'correction' ? 'Corrección' : 'Traducción'}
+                {PROMPT_TAB_LABELS[p]}
               </button>
             ))}
           </div>
 
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
-              Variables disponibles:{' '}
-              {promptTab === 'correction'
-                ? '{{LEVEL}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}'
-                : '{{LEVEL}}, {{SOURCE_LANG}}, {{TARGET_LANG}}, {{EXPLANATION_LANG}}, {{EXPLANATION_LANG_FULL}}'}
+              Variables disponibles: <code className="bg-muted px-1 rounded">{PROMPT_TAB_VARS[promptTab]}</code>
             </p>
             <textarea
+              key={promptTab}
               className="w-full min-h-[360px] rounded-md border border-input bg-background px-3 py-2 text-xs font-mono resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={promptTab === 'correction' ? correctionDraft : translationDraft}
-              onChange={(e) =>
-                promptTab === 'correction'
-                  ? setCorrectionDraft(e.target.value)
-                  : setTranslationDraft(e.target.value)
-              }
+              value={drafts[promptTab]}
+              onChange={(e) => setDraft(promptTab, e.target.value)}
               spellCheck={false}
+              aria-label={`Prompt de ${PROMPT_TAB_LABELS[promptTab]}`}
             />
           </div>
 

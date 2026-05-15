@@ -1,10 +1,23 @@
 import { z } from 'zod'
 
+// Map of non-standard types the model occasionally returns → canonical type
+const ERROR_TYPE_ALIASES: Record<string, string> = {
+  article: 'gender',
+  articles: 'gender',
+  verb_form: 'conjugation',
+  verb_order: 'word_order',
+  syntax: 'word_order',
+  comma: 'punctuation',
+  orthography: 'spelling',
+  capitalization: 'spelling',
+  separable: 'separable_verb',
+}
+
 export const ErrorTypeEnum = z.enum([
-  'gender', 'case', 'declension', 'conjugation', 'preposition',
+  'gender', 'case', 'declension', 'conjugation', 'separable_verb', 'preposition',
   'word_order', 'spelling', 'punctuation', 'vocabulary', 'style',
   'agreement', 'tense', 'mood', 'voice', 'particle',
-])
+]).or(z.string().transform((v) => ERROR_TYPE_ALIASES[v] ?? 'vocabulary'))
 
 export const SeverityEnum = z.enum(['critical', 'major', 'minor'])
 export const LevelEnum = z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])

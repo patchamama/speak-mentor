@@ -113,7 +113,7 @@ export async function translateText(
     }
   }
 
-  return parsed.data
+  return parsed.data as TranslationResponse
 }
 
 function safeParse<T>(raw: string, schema: z.ZodType<T>): z.SafeParseReturnType<unknown, T> {

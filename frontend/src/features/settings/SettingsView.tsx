@@ -47,8 +47,6 @@ export function SettingsView() {
   const { register: regConn, handleSubmit: handleConn, setValue } = useForm<OllamaConfig>({
     defaultValues: ollama,
   })
-  const selectedModel = useForm<OllamaConfig>({ defaultValues: ollama }).watch?.('model') ?? ollama.model
-
   useEffect(() => {
     if (models.length === 0) return
     const currentIsListed = models.some((m) => m.name === ollama.model)

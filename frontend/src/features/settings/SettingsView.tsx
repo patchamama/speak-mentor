@@ -366,28 +366,41 @@ export function SettingsView() {
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
             Ollama debe iniciarse con <code className="bg-muted px-1 rounded text-xs">OLLAMA_ORIGINS=*</code> para
-            permitir peticiones desde el navegador. El comando recomendado incluye optimizaciones de rendimiento.
+            permitir peticiones desde el navegador. Usá el script incluido para detección automática de hardware.
           </p>
+
+          {/* Script recomendado */}
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+            <p className="text-sm font-semibold">Script recomendado (auto-detecta hardware)</p>
+            <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">./start-ollama.sh</pre>
+            <p className="text-xs text-muted-foreground">Detecta Apple Silicon / NVIDIA / CPU e inicia Ollama con los flags óptimos para tu hardware. Incluido en la raíz del proyecto.</p>
+          </div>
 
           {/* Comandos por OS */}
           {([
             {
-              os: 'macOS / Linux',
-              kill: 'pkill -f ollama',
+              os: 'macOS — Apple Silicon (M1/M2/M3/M4)',
+              kill: '# Detener CLI y app del menú\npkill -f "ollama serve" 2>/dev/null || true\nosascript -e \'quit app "Ollama"\' 2>/dev/null || true\npkill -x "Ollama" 2>/dev/null || true',
               runBasic: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
-              runFull: 'OLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_KEEP_ALIVE=-1 \\\nollama serve',
+              runFull: '# Para Mac con 16-32 GB RAM\nOLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=2 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve\n\n# Para Mac con 64 GB RAM\nOLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=3 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve',
+            },
+            {
+              os: 'macOS — Intel / Linux',
+              kill: 'pkill -f ollama 2>/dev/null || true',
+              runBasic: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
+              runFull: 'OLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=1 \\\nollama serve',
             },
             {
               os: 'Windows (PowerShell)',
               kill: 'Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue',
               runBasic: '$env:OLLAMA_HOST="0.0.0.0:11434"; $env:OLLAMA_ORIGINS="*"; ollama serve',
-              runFull: '$env:OLLAMA_HOST="0.0.0.0:11434"\n$env:OLLAMA_ORIGINS="*"\n$env:OLLAMA_FLASH_ATTENTION="1"\n$env:OLLAMA_KV_CACHE_TYPE="q8_0"\n$env:OLLAMA_NUM_PARALLEL="2"\n$env:OLLAMA_KEEP_ALIVE="-1"\nollama serve',
+              runFull: '$env:OLLAMA_HOST="0.0.0.0:11434"\n$env:OLLAMA_ORIGINS="*"\n$env:OLLAMA_KEEP_ALIVE="-1"\n$env:OLLAMA_FLASH_ATTENTION="1"\n$env:OLLAMA_KV_CACHE_TYPE="q8_0"\n$env:OLLAMA_NUM_PARALLEL="2"\n$env:OLLAMA_MAX_LOADED_MODELS="2"\nollama serve',
             },
             {
               os: 'Windows (CMD)',
               kill: 'taskkill /F /IM ollama.exe 2>nul',
               runBasic: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && ollama serve',
-              runFull: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_KV_CACHE_TYPE=q8_0 && set OLLAMA_NUM_PARALLEL=2 && set OLLAMA_KEEP_ALIVE=-1 && ollama serve',
+              runFull: 'set OLLAMA_HOST=0.0.0.0:11434 && set OLLAMA_ORIGINS=* && set OLLAMA_KEEP_ALIVE=-1 && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_KV_CACHE_TYPE=q8_0 && set OLLAMA_NUM_PARALLEL=2 && set OLLAMA_MAX_LOADED_MODELS=2 && ollama serve',
             },
           ] as const).map(({ os, kill, runBasic, runFull }) => (
             <div key={os} className="rounded-lg border p-4 space-y-3">
@@ -403,21 +416,62 @@ export function SettingsView() {
             </div>
           ))}
 
+          {/* Benchmark results */}
+          <div className="rounded-lg border p-4 space-y-3">
+            <p className="text-sm font-semibold">Resultados de benchmark (translategemma:12b, M1 Max 64 GB)</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-3 py-2 text-left font-semibold">Configuración</th>
+                    <th className="px-3 py-2 text-right font-semibold">Decode t/s</th>
+                    <th className="px-3 py-2 text-right font-semibold">Prefill t/s</th>
+                    <th className="px-3 py-2 text-right font-semibold">Tiempo total</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono">
+                  {([
+                    ['Baseline (q8_0, ctx=4096)', '25.1', '74.2', '11.2s'],
+                    ['+ GPU_LAYERS=99, MAX_LOADED=2', '24.5', '89.9', '12.6s'],
+                    ['KV cache q4_0', '25.1', '76.1', '13.5s'],
+                    ['num_ctx=2048 ⭐ mejor total', '25.2', '163.5', '9.2s'],
+                    ['num_ctx=8192', '24.6', '74.9', '11.3s'],
+                    ['temperature=0 (greedy)', '24.3', '82.2', '11.4s'],
+                    ['NUM_PARALLEL=4, MAX_LOADED=3', '24.5', '83.1', '12.5s'],
+                  ] as const).map(([config, decode, prefill, total], i) => (
+                    <tr key={i} className={`border-b last:border-0 ${config.includes('⭐') ? 'bg-primary/5 font-semibold' : 'hover:bg-muted/30'}`}>
+                      <td className="px-3 py-1.5 font-sans">{config}</td>
+                      <td className="px-3 py-1.5 text-right">{decode}</td>
+                      <td className="px-3 py-1.5 text-right">{prefill}</td>
+                      <td className="px-3 py-1.5 text-right">{total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-1 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+              <p><strong>Conclusión:</strong> el decode speed (~25 t/s) es hardware-bound — el modelo Q4_K_M es el cuello de botella real.</p>
+              <p>La mayor palanca es <code className="bg-muted px-1 rounded">num_ctx</code>: ctx=2048 da <strong>2.2× más prefill</strong> y ahorra ~2s por llamada.</p>
+              <p><code className="bg-muted px-1 rounded">OLLAMA_MAX_LOADED_MODELS</code> evita recargas cuando el pipeline alterna entre modelos.</p>
+              <p>Ollama 0.19+ (backend MLX) reporta +93% decode en Apple Silicon respecto a versiones anteriores.</p>
+            </div>
+          </div>
+
           {/* Variables de entorno */}
           <div className="rounded-lg border p-4 space-y-3">
             <p className="text-sm font-semibold">Variables de entorno — referencia</p>
             <div className="space-y-2 text-xs">
               {([
-                { name: 'OLLAMA_ORIGINS', value: '"*"', desc: 'CORS — permite peticiones desde el navegador' },
-                { name: 'OLLAMA_KEEP_ALIVE', value: '-1', desc: 'Mantiene el modelo en VRAM indefinidamente (evita recargas entre passes)' },
+                { name: 'OLLAMA_ORIGINS', value: '"*"', desc: 'CORS — permite peticiones desde el navegador (obligatorio)' },
+                { name: 'OLLAMA_KEEP_ALIVE', value: '-1', desc: 'Mantiene el modelo en VRAM indefinidamente. Evita recargas entre passes del pipeline' },
                 { name: 'OLLAMA_KV_CACHE_TYPE', value: 'q8_0', desc: '50% menos VRAM con mínima pérdida de calidad. Requiere Flash Attention' },
-                { name: 'OLLAMA_FLASH_ATTENTION', value: '1', desc: 'Activa Flash Attention (Apple Silicon, NVIDIA Pascal+, AMD ROCm)' },
-                { name: 'OLLAMA_NUM_PARALLEL', value: '2', desc: 'Requests concurrentes al mismo modelo sin descargarlo' },
-                { name: 'OLLAMA_MAX_LOADED_MODELS', value: '1', desc: 'Modelos simultáneos en VRAM (reducir si hay poca memoria)' },
+                { name: 'OLLAMA_FLASH_ATTENTION', value: '1', desc: 'Flash Attention: prefill más rápido y menor uso de memoria (Apple Silicon, NVIDIA Pascal+, AMD ROCm)' },
+                { name: 'OLLAMA_NUM_PARALLEL', value: '2', desc: 'Requests concurrentes al mismo modelo sin descargarlo. Usar 1 con 16 GB RAM' },
+                { name: 'OLLAMA_MAX_LOADED_MODELS', value: '2-3', desc: 'Modelos simultáneos en VRAM. 2 con 32 GB, 3 con 64 GB. Evita recargas en pipelines multi-modelo' },
               ] as const).map(({ name, value, desc }) => (
-                <div key={name} className="grid grid-cols-[auto_auto_1fr] gap-x-3 items-start">
-                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{name}</code>
-                  <code className="bg-primary/10 px-1.5 py-0.5 rounded font-mono text-primary">{value}</code>
+                <div key={name} className="grid grid-cols-[auto_auto_1fr] gap-x-3 items-start py-0.5">
+                  <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground whitespace-nowrap">{name}</code>
+                  <code className="bg-primary/10 px-1.5 py-0.5 rounded font-mono text-primary whitespace-nowrap">{value}</code>
                   <span className="text-muted-foreground pt-0.5">{desc}</span>
                 </div>
               ))}

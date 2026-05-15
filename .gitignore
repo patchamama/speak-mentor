@@ -1,0 +1,16 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/speak_mentor.db
+backend/instance/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.DS_Store
+*.env
+.env.local

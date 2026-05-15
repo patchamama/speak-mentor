@@ -59,6 +59,12 @@ const ExerciseSchema = z.object({
   answer: z.string(),
   answer_explanation: z.string(),
   rule_reference: z.string().optional(),
+}).transform((ex) => {
+  // Guarantee the answer is always present in options
+  if (ex.options && ex.options.length > 0 && !ex.options.includes(ex.answer)) {
+    return { ...ex, options: [...ex.options.slice(0, 3), ex.answer] }
+  }
+  return ex
 })
 
 const ExercisesResponseSchema = z.object({

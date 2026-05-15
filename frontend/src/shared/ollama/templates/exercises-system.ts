@@ -20,8 +20,16 @@ EXERCISE DESIGN RULES:
 9. Generate between 8 and 12 exercises — aim for 10.
 10. Respond with a SINGLE valid JSON object. No prose before or after.
 
+ANSWER INTEGRITY RULE (MANDATORY — check before outputting):
+The value of "answer" MUST be exactly one of the strings in "options".
+Before writing each exercise, verify: does options[] contain a string that equals answer?
+If not, add the correct answer to options[] and remove the weakest distractor.
+NEVER output an exercise where the answer is absent from options.
+
 OPTIONS GENERATION RULES (CRITICAL — read carefully):
-The 3-4 options must be PLAUSIBLE COMPETITORS from the SAME grammatical category:
+The 3-4 options must be PLAUSIBLE COMPETITORS from the SAME grammatical category.
+When the correct answer involves a declined noun form (e.g. plural dative), the options
+must include that exact inflected form — not just the nominative singular.
 
 - error_type = "case" or "declension":
   Use the SAME article/pronoun in different cases.

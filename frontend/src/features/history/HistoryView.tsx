@@ -3,10 +3,14 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
 import { SessionList } from './components/SessionList'
 import { ByTypeChart, ByLevelChart, TimelineChart, TopRulesTable } from './components/ErrorStatsChart'
+import { ErrorHighlight, ERROR_COLORS_MAP } from '@/features/correction/components/ErrorHighlight'
+import { ErrorPanel } from '@/features/correction/components/ErrorPanel'
+import { TipsList } from '@/features/correction/components/TipsList'
 import {
   useSessionList, useSessionDetail, useDeleteSession,
   useStatsByType, useStatsByLevel, useStatsTimeline, useTopRules,
 } from './hooks/useHistory'
+import type { CorrectionResponse } from '@/shared/ollama/schemas'
 
 const MODE_FILTER_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -14,17 +18,13 @@ const MODE_FILTER_OPTIONS = [
   { value: 'translation', label: 'Traducción' },
 ]
 
-const SEVERITY_BADGE: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  major: 'bg-orange-100 text-orange-700',
-  minor: 'bg-gray-100 text-gray-600',
-}
 
 export function HistoryView() {
   const [tab, setTab] = useState<'sessions' | 'stats'>('sessions')
   const [page, setPage] = useState(1)
   const [modeFilter, setModeFilter] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
 
   const { data, isLoading } = useSessionList(page, modeFilter || undefined)
   const { data: detail, isLoading: detailLoading } = useSessionDetail(selectedId)
@@ -87,7 +87,7 @@ export function HistoryView() {
               <SessionList
                 sessions={data?.sessions ?? []}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={(id) => { setSelectedId(id); setActiveErrorIdx(null) }}
                 onDelete={(id) => { deleteSession(id); if (selectedId === id) setSelectedId(null) }}
                 deleting={deleting}
               />
@@ -113,37 +113,90 @@ export function HistoryView() {
               <p className="text-sm text-muted-foreground italic">Seleccioná una sesión para ver el detalle.</p>
             )}
             {detailLoading && <div className="flex justify-center p-8"><Spinner /></div>}
-            {detail && !detailLoading && (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.input_text}</p>
-                </div>
-                <div className="rounded-lg bg-muted/30 p-4 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {detail.mode === 'correction' ? 'Texto corregido' : 'Traducción'}
-                  </p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.output_text}</p>
-                </div>
-                {detail.errors && detail.errors.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Errores ({detail.errors.length})
-                    </p>
-                    {detail.errors.map((err, i) => (
-                      <div key={i} className="rounded-md border p-3 text-sm space-y-1">
-                        <div className="flex gap-2 items-center">
-                          <span className="text-xs bg-muted px-2 py-0.5 rounded">{err.type}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${SEVERITY_BADGE[err.severity]}`}>{err.severity}</span>
-                        </div>
-                        <p><span className="line-through text-muted-foreground">{err.original}</span> → <span className="font-medium">{err.correction}</span></p>
-                        <p className="text-xs text-muted-foreground">{err.explanation}</p>
+            {detail && !detailLoading && (() => {
+              const correctionData: CorrectionResponse | null = detail.mode === 'correction' && detail.raw_llm
+                ? (() => { try { return JSON.parse(detail.raw_llm) } catch { return null } })()
+                : null
+
+              return (
+                <div className="space-y-4">
+                  {correctionData ? (
+                    <>
+                      {/* Level assessment */}
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-muted-foreground">Nivel detectado:</span>
+                        <span className="font-medium">{correctionData.level_assessment.detected_level}</span>
+                        {correctionData.level_assessment.gap_notes && (
+                          <span className="text-muted-foreground">— {correctionData.level_assessment.gap_notes}</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+
+                      {/* Corrected text */}
+                      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto corregido</p>
+                        <p className="text-sm leading-relaxed">{correctionData.corrected}</p>
+                      </div>
+
+                      {/* Color legend */}
+                      {correctionData.errors.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {Array.from(new Set(correctionData.errors.map((e) => e.type))).map((type) => {
+                            const colorClass = ERROR_COLORS_MAP[type] ?? 'bg-gray-100'
+                            const bg = colorClass.split(' ')[0]
+                            return (
+                              <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${bg}`}>
+                                {type}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Highlighted original + error panel */}
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original con errores</p>
+                          <div className="rounded-lg border p-4">
+                            <ErrorHighlight
+                              text={detail.input_text}
+                              errors={correctionData.errors}
+                              activeErrorIdx={activeErrorIdx}
+                              onErrorClick={setActiveErrorIdx}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            Errores ({correctionData.summary.error_count})
+                          </p>
+                          <ErrorPanel
+                            errors={correctionData.errors}
+                            activeIdx={activeErrorIdx}
+                            onSelect={setActiveErrorIdx}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tips */}
+                      <div className="rounded-lg border p-4">
+                        <TipsList tips={correctionData.tips} mainFocus={correctionData.summary.main_focus} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.input_text}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/30 p-4 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.output_text}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

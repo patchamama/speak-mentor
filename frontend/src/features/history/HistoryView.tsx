@@ -114,9 +114,27 @@ export function HistoryView() {
             )}
             {detailLoading && <div className="flex justify-center p-8"><Spinner /></div>}
             {detail && !detailLoading && (() => {
-              const correctionData: CorrectionResponse | null = detail.mode === 'correction' && detail.raw_llm
-                ? (() => { try { return JSON.parse(detail.raw_llm) } catch { return null } })()
-                : null
+              // Parse raw_llm and merge position_unreliable from persisted errors
+              // (raw_llm is the model's JSON output; position_unreliable is added by
+              // client.ts post-processing and stored separately in the errors table)
+              const correctionData: CorrectionResponse | null = (() => {
+                if (detail.mode !== 'correction' || !detail.raw_llm) return null
+                try {
+                  const parsed: CorrectionResponse = JSON.parse(detail.raw_llm)
+                  if (detail.errors && detail.errors.length > 0) {
+                    parsed.errors = parsed.errors.map((err, i) => {
+                      const saved = detail.errors![i]
+                      if (!saved) return err
+                      return saved.position_unreliable
+                        ? { ...err, position: null, position_unreliable: true }
+                        : err
+                    })
+                  }
+                  return parsed
+                } catch {
+                  return null
+                }
+              })()
 
               return (
                 <div className="space-y-4">

@@ -29,6 +29,7 @@ class Session(db.Model):
             'level': self.level,
             'input_text': self.input_text,
             'output_text': self.output_text,
+            'raw_llm': self.raw_llm,
             'model': self.model,
             'created_at': self.created_at.isoformat(),
         }
@@ -50,6 +51,7 @@ class Error(db.Model):
     severity = db.Column(db.String(20), nullable=False)
     position_start = db.Column(db.Integer)
     position_end = db.Column(db.Integer)
+    position_unreliable = db.Column(db.Boolean, default=False)
     explanation = db.Column(db.Text, nullable=False)
     rule_reference = db.Column(db.Text)
     example = db.Column(db.Text)
@@ -66,6 +68,7 @@ class Error(db.Model):
             'severity': self.severity,
             'position_start': self.position_start,
             'position_end': self.position_end,
+            'position_unreliable': self.position_unreliable or False,
             'explanation': self.explanation,
             'rule_reference': self.rule_reference,
             'example': self.example,

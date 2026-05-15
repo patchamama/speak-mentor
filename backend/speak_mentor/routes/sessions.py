@@ -38,6 +38,7 @@ def create_session():
             severity=err['severity'],
             position_start=err.get('position_start'),
             position_end=err.get('position_end'),
+            position_unreliable=err.get('position_unreliable', False),
             explanation=err['explanation'],
             rule_reference=err.get('rule_reference'),
             example=err.get('example'),

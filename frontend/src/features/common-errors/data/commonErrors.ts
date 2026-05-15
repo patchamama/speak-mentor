@@ -642,17 +642,17 @@ export const COMMON_ERRORS_DATA: CommonErrorCategory[] = [
     ],
     referenceTables: [
       {
-        title: 'Conjugación de los 6 verbos modales — Präsens',
-        headers: ['Persona', 'können (poder)', 'müssen (deber/tener que)', 'dürfen (tener permiso)', 'wollen (querer)', 'sollen (deber según otro)', 'mögen / möchten (gustar/quisiera)'],
+        title: 'Conjugación de los verbos modales — Präsens',
+        headers: ['Persona', 'können (poder)', 'müssen (deber)', 'dürfen (permiso)', 'wollen (querer)', 'sollen (deber externo)', 'mögen (gustar)', 'möchten (quisiera)'],
         rows: [
-          ['ich', 'kann', 'muss', 'darf', 'will', 'soll', 'mag / möchte'],
-          ['du', 'kannst', 'musst', 'darfst', 'willst', 'sollst', 'magst / möchtest'],
-          ['er/sie/es', 'kann', 'muss', 'darf', 'will', 'soll', 'mag / möchte'],
-          ['wir', 'können', 'müssen', 'dürfen', 'wollen', 'sollen', 'mögen / möchten'],
-          ['ihr', 'könnt', 'müsst', 'dürft', 'wollt', 'sollt', 'mögt / möchtet'],
-          ['sie/Sie', 'können', 'müssen', 'dürfen', 'wollen', 'sollen', 'mögen / möchten'],
+          ['ich', 'kann', 'muss', 'darf', 'will', 'soll', 'mag', 'möchte'],
+          ['du', 'kannst', 'musst', 'darfst', 'willst', 'sollst', 'magst', 'möchtest'],
+          ['er/sie/es', 'kann', 'muss', 'darf', 'will', 'soll', 'mag', 'möchte'],
+          ['wir', 'können', 'müssen', 'dürfen', 'wollen', 'sollen', 'mögen', 'möchten'],
+          ['ihr', 'könnt', 'müsst', 'dürft', 'wollt', 'sollt', 'mögt', 'möchtet'],
+          ['sie/Sie', 'können', 'müssen', 'dürfen', 'wollen', 'sollen', 'mögen', 'möchten'],
         ],
-        note: 'Los modales tienen Umlaut en singular (kann, muss, darf, will) que desaparece en plural. La 1ª y 3ª persona del singular son idénticas (sin -t final).',
+        note: 'Los modales tienen Umlaut en singular (kann, muss, darf, will) que desaparece en plural. La 1ª y 3ª persona del singular son idénticas (sin -t final). "möchten" es el Konjunktiv II de "mögen" usado como modal independiente.',
       },
       {
         title: 'Usos y matices de cada modal',

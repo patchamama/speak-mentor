@@ -41,6 +41,9 @@ export interface CommonErrorsExercisesResult {
   study_advice: string
 }
 
+// Tables that should never appear as fill exercises
+const EXCLUDED_TABLE_TITLES = ['Usos y matices de cada modal']
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function refTableToFillTable(table: ReferenceTable, id: number): FillTableExercise {
@@ -53,7 +56,7 @@ function refTableToFillTable(table: ReferenceTable, id: number): FillTableExerci
     id,
     type: 'fill_table',
     targets_error_type: 'declension',
-    instruction: `Completá la tabla de declinación: ${table.title}`,
+    instruction: `Completá la tabla: ${table.title}`,
     table_title: table.title,
     headers: table.headers,
     rows,
@@ -106,9 +109,9 @@ export function useCommonErrorsExercises(
 
     try {
       // Build fill_table exercises directly from reference tables (no AI needed)
-      const staticFillTables: FillTableExercise[] = (category.referenceTables ?? []).map(
-        (table, i) => refTableToFillTable(table, -(i + 1)),
-      )
+      const staticFillTables: FillTableExercise[] = (category.referenceTables ?? [])
+        .filter((t) => !EXCLUDED_TABLE_TITLES.includes(t.title))
+        .map((table, i) => refTableToFillTable(table, -(i + 1)))
 
       const prompt = buildPrompt({
         mode: 'commonErrorsExercises',

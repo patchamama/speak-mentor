@@ -74,17 +74,31 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
   }, 0)
 
   const [cells, setCells] = useState<CellState[][]>(() => {
-    // collect all fillable positions
-    const fillable: [number, number][] = []
+    // Determine how many data columns exist (excluding col 0)
+    const colCount = dataRows[0]?.length ?? 0
+    const hints = new Set<string>()
+
+    // Guarantee at least 1 hint per data column
+    for (let ci = 1; ci < colCount; ci++) {
+      const fillableInCol = dataRows
+        .map((row, ri) => ({ ri, cell: row[ci] }))
+        .filter(({ cell }) => cell && !cell.isHeader)
+      if (fillableInCol.length === 0) continue
+      const pick = fillableInCol[Math.floor(Math.random() * fillableInCol.length)]
+      hints.add(`${pick.ri},${ci}`)
+    }
+
+    // Add extra hints up to ~25% total
+    const allFillable: [number, number][] = []
     dataRows.forEach((row, ri) => {
       row.forEach((cell, ci) => {
-        if (!cell.isHeader && ci > 0) fillable.push([ri, ci])
+        if (ci > 0 && !cell.isHeader && !hints.has(`${ri},${ci}`)) allFillable.push([ri, ci])
       })
     })
-    // pick ~25% to pre-fill
-    const hintCount = Math.max(1, Math.round(fillable.length * 0.25))
-    const shuffled = [...fillable].sort(() => Math.random() - 0.5)
-    const hints = new Set(shuffled.slice(0, hintCount).map(([r, c]) => `${r},${c}`))
+    const totalFillable = dataRows.reduce((acc, row) => acc + row.filter((c, ci) => ci > 0 && !c.isHeader).length, 0)
+    const extraNeeded = Math.max(0, Math.round(totalFillable * 0.25) - hints.size)
+    const shuffled = [...allFillable].sort(() => Math.random() - 0.5)
+    shuffled.slice(0, extraNeeded).forEach(([r, c]) => hints.add(`${r},${c}`))
 
     return dataRows.map((row, ri) =>
       row.map((cell, ci) => {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { COMMON_ERRORS_DATA, type CommonErrorCategory } from './data/commonErrors'
+import { COMMON_ERRORS_DATA, type CommonErrorCategory, type ReferenceTable } from './data/commonErrors'
 
 const ERROR_TYPE_COLORS: Record<string, string> = {
   case: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
@@ -41,6 +41,37 @@ function ExampleCard({ example }: { example: CommonErrorCategory['examples'][num
   )
 }
 
+function RefTable({ table }: { table: ReferenceTable }) {
+  return (
+    <div className="space-y-1">
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{table.title}</h4>
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              {table.headers.map((h, i) => (
+                <th key={i} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, ri) => (
+              <tr key={ri} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-3 py-1.5 font-mono whitespace-nowrap">{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {table.note && (
+        <p className="text-xs text-muted-foreground italic">{table.note}</p>
+      )}
+    </div>
+  )
+}
+
 function CategorySection({ category }: { category: CommonErrorCategory }) {
   const [open, setOpen] = useState(true)
   const colorClass = ERROR_TYPE_COLORS[category.errorType] ?? 'bg-muted text-muted-foreground'
@@ -67,10 +98,18 @@ function CategorySection({ category }: { category: CommonErrorCategory }) {
       </button>
 
       {open && (
-        <div className="space-y-3 pl-2 border-l-2 border-muted ml-1">
+        <div className="space-y-4 pl-2 border-l-2 border-muted ml-1">
           {category.examples.map((ex) => (
             <ExampleCard key={ex.id} example={ex} />
           ))}
+          {category.referenceTables && category.referenceTables.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tablas de referencia</p>
+              {category.referenceTables.map((table, i) => (
+                <RefTable key={i} table={table} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>

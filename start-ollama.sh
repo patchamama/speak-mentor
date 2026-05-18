@@ -165,7 +165,19 @@ else
   fi
 fi
 
-# ── 3. Start Ollama ───────────────────────────────────────────────────────────
+# ── 3. Resolve network-accessible IP ─────────────────────────────────────────
+if [[ "$PLATFORM" == "wsl2" ]]; then
+  # On WSL2, the IP other machines see is the Windows host IP, not the WSL2 IP.
+  NETWORK_IP=$(powershell.exe -NoProfile -Command \
+    "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { \$_.IPAddress -notmatch '^(127\.|169\.254\.)' -and \$_.PrefixOrigin -ne 'WellKnown' } | Sort-Object -Property InterfaceMetric | Select-Object -First 1).IPAddress" \
+    2>/dev/null | tr -d '\r\n')
+elif [[ "$PLATFORM" == "macos" ]]; then
+  NETWORK_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "")
+else
+  NETWORK_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '/src/{print $7; exit}' || hostname -I 2>/dev/null | awk '{print $1}')
+fi
+
+# ── 4. Start Ollama ───────────────────────────────────────────────────────────
 echo ""
 echo "Starting Ollama..."
 echo "  OLLAMA_HOST             = 0.0.0.0:${OLLAMA_PORT}"
@@ -180,6 +192,12 @@ echo ""
 echo "Tip: keep num_ctx ≤ 4096 in requests — smaller context = faster prefill."
 echo "     ctx=2048 → ~2x faster prefill vs ctx=4096 with no quality loss for short texts."
 echo ""
+if [[ -n "${NETWORK_IP:-}" ]]; then
+  echo "  Network access:"
+  echo "    http://${NETWORK_IP}:${OLLAMA_PORT}       (other machines on the same network)"
+  echo "    http://localhost:${OLLAMA_PORT}            (this machine only)"
+  echo ""
+fi
 
 # Final port check — catches the race between our check and ollama's bind
 if port_in_use "${OLLAMA_PORT}"; then

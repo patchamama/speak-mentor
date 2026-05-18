@@ -8,6 +8,7 @@ import {
   type CorrectionResponse,
   type TranslationResponse,
 } from './schemas'
+import { useOllamaActivityStore } from '@/stores/ollamaActivityStore'
 
 // ── Global serialization queue ────────────────────────────────────────────────
 // Only one Ollama request runs at a time; remaining requests wait in line.
@@ -25,8 +26,10 @@ function _drain() {
   if (_running || _queue.length === 0) return
   const item = _queue.shift()!
   _running = true
+  useOllamaActivityStore.getState().setBusy(true)
   item.run().then(item.resolve, item.reject).finally(() => {
     _running = false
+    if (_queue.length === 0) useOllamaActivityStore.getState().setBusy(false)
     _drain()
   })
 }

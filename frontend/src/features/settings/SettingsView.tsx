@@ -47,6 +47,15 @@ export function SettingsView() {
   const { register: regConn, handleSubmit: handleConn, setValue } = useForm<OllamaConfig>({
     defaultValues: ollama,
   })
+
+  // Keep form in sync when the store is updated externally (e.g. auto-detected port/model at startup)
+  useEffect(() => {
+    setValue('url', ollama.url)
+    setValue('port', ollama.port)
+    setValue('model', ollama.model)
+    setValue('keepAlive', ollama.keepAlive)
+  }, [ollama, setValue])
+
   useEffect(() => {
     if (models.length === 0) return
     const currentIsListed = models.some((m) => m.name === ollama.model)

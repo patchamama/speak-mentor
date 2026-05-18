@@ -11,6 +11,7 @@ import { useFaviconRenderer } from './shared/hooks/useFaviconProgress'
 import { useOllamaStartup, type OllamaStatus } from './shared/hooks/useOllamaStartup'
 import { useBackendStatus } from './shared/hooks/useBackendStatus'
 import { useBackendStore } from './stores/backendStore'
+import { useOllamaActivityStore } from './stores/ollamaActivityStore'
 import { cn } from './lib/utils'
 
 const STATUS_DOT: Record<OllamaStatus, { color: string; label: string }> = {
@@ -37,7 +38,10 @@ export default function App() {
   const { ollamaStatus } = useOllamaStartup()
   useBackendStatus()
   const backendStatus = useBackendStore((s) => s.status)
-  const dot = STATUS_DOT[ollamaStatus]
+  const ollamaBusy = useOllamaActivityStore((s) => s.busy)
+  const dot = ollamaBusy && ollamaStatus === 'connected'
+    ? { color: 'bg-green-400 animate-pulse', label: 'Ollama: procesando…' }
+    : STATUS_DOT[ollamaStatus]
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -125,6 +125,15 @@ if [[ "$PLATFORM" == "macos" ]]; then
 elif [[ "$PLATFORM" == "wsl2" ]]; then
   # ── WSL2 ───────────────────────────────────────────────────────────────────
   # AMD ROCm is not supported under WSL2; only NVIDIA via CUDA/DirectML
+
+  # Point to Windows Ollama models so the Linux Ollama instance sees the same models
+  WIN_USER=$(powershell.exe -NoProfile -Command '[Environment]::UserName' 2>/dev/null | tr -d '\r\n')
+  WIN_MODELS="/mnt/c/Users/${WIN_USER}/.ollama/models"
+  if [ -d "$WIN_MODELS" ]; then
+    OLLAMA_MODELS="$WIN_MODELS"
+    echo "Using Windows Ollama models at ${OLLAMA_MODELS}"
+  fi
+
   RAM_GB=$(linux_ram_gb)
   if nvidia_smi &>/dev/null; then
     VRAM_GB=$(nvidia_vram_gb)
@@ -166,6 +175,7 @@ echo "  OLLAMA_NUM_PARALLEL     = ${NUM_PARALLEL}"
 echo "  OLLAMA_MAX_LOADED_MODELS= ${MAX_LOADED}"
 echo "  OLLAMA_FLASH_ATTN       = ${USE_FLASH}"
 echo "  OLLAMA_KV_CACHE         = ${KV_CACHE}"
+[[ -n "${OLLAMA_MODELS:-}" ]] && echo "  OLLAMA_MODELS           = ${OLLAMA_MODELS}"
 echo ""
 echo "Tip: keep num_ctx ≤ 4096 in requests — smaller context = faster prefill."
 echo "     ctx=2048 → ~2x faster prefill vs ctx=4096 with no quality loss for short texts."
@@ -178,11 +188,13 @@ if port_in_use "${OLLAMA_PORT}"; then
   echo "  OLLAMA_HOST             = 0.0.0.0:${OLLAMA_PORT} (updated)"
 fi
 
-OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT} \
-OLLAMA_ORIGINS="*" \
-OLLAMA_KEEP_ALIVE=-1 \
-OLLAMA_NUM_PARALLEL=${NUM_PARALLEL} \
-OLLAMA_MAX_LOADED_MODELS=${MAX_LOADED} \
-OLLAMA_FLASH_ATTENTION=${USE_FLASH} \
-OLLAMA_KV_CACHE_TYPE=${KV_CACHE} \
-ollama serve
+export OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}
+export OLLAMA_ORIGINS="*"
+export OLLAMA_KEEP_ALIVE=-1
+export OLLAMA_NUM_PARALLEL=${NUM_PARALLEL}
+export OLLAMA_MAX_LOADED_MODELS=${MAX_LOADED}
+export OLLAMA_FLASH_ATTENTION=${USE_FLASH}
+export OLLAMA_KV_CACHE_TYPE=${KV_CACHE}
+[[ -n "${OLLAMA_MODELS:-}" ]] && export OLLAMA_MODELS
+
+exec ollama serve

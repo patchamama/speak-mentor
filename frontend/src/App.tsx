@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Toaster } from 'sonner'
+import { useIsFetching } from '@tanstack/react-query'
 import { CorrectionContainer } from './features/correction/CorrectionContainer'
 import { TranslationContainer } from './features/translation/TranslationContainer'
 import { HistoryContainer } from './features/history/HistoryContainer'
@@ -39,7 +40,9 @@ export default function App() {
   useBackendStatus()
   const backendStatus = useBackendStore((s) => s.status)
   const ollamaBusy = useOllamaActivityStore((s) => s.busy)
-  const dot = ollamaBusy && ollamaStatus === 'connected'
+  const backendFetching = useIsFetching() > 0
+
+  const ollamaDot = ollamaBusy && ollamaStatus === 'connected'
     ? { color: 'bg-green-400 animate-pulse', label: 'Ollama: procesando…' }
     : STATUS_DOT[ollamaStatus]
 
@@ -71,20 +74,21 @@ export default function App() {
             {dark ? '☀' : '☾'}
           </button>
           <span
-            title={dot.label}
-            aria-label={dot.label}
-            className={cn('h-2 w-2 rounded-full inline-block', dot.color)}
-          />
-          <span
-            title={`Backend: ${backendStatus}`}
-            aria-label={`Backend: ${backendStatus}`}
+            title={backendFetching ? 'Backend: consultando…' : `Backend: ${backendStatus}`}
+            aria-label={backendFetching ? 'Backend: consultando…' : `Backend: ${backendStatus}`}
             className={cn('h-2 w-2 rounded-full inline-block', {
               'bg-muted-foreground/40 animate-pulse': backendStatus === 'checking',
-              'bg-green-500': backendStatus === 'available',
-              'bg-red-400': backendStatus === 'unavailable',
+              'bg-green-400 animate-pulse': backendStatus === 'available' && backendFetching,
+              'bg-green-500': backendStatus === 'available' && !backendFetching,
+              'bg-red-500': backendStatus === 'unavailable',
             })}
           />
-          <span className="text-xs text-muted-foreground">v0.1.0</span>
+          <span
+            title={ollamaDot.label}
+            aria-label={ollamaDot.label}
+            className={cn('h-2 w-2 rounded-full inline-block', ollamaDot.color)}
+          />
+          <span className="text-xs text-muted-foreground">v{__APP_VERSION__}</span>
         </div>
       </header>
       <main className="container mx-auto px-6 py-8 max-w-5xl">

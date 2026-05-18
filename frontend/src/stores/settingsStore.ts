@@ -11,7 +11,7 @@ export const DEFAULT_MODEL_PARAMS: ModelParams = {
   temperature: 0.2,
   top_p: 0.9,
   num_ctx: 4096,
-  timeout: 300000, // 5 min
+  timeout: 600000, // 10 min
 }
 
 export interface ExtendedPromptOverrides extends PromptOverrides {
@@ -76,7 +76,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'speak-mentor-settings',
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         const p = persisted as Partial<SettingsState>
         // v0→v4: reset all prompts to latest defaults
@@ -90,6 +90,18 @@ export const useSettingsStore = create<SettingsState>()(
               exercisesSystem: EXERCISES_SYSTEM_TEMPLATE,
             },
             pipeline: DEFAULT_PIPELINE_CONFIG,
+          }
+        }
+        // v4→v5: bump timeout from 5 min to 10 min for users still on the old default
+        if (version < 5) {
+          const params = p.modelParams as ModelParams | undefined
+          return {
+            ...p,
+            modelParams: {
+              ...DEFAULT_MODEL_PARAMS,
+              ...params,
+              timeout: params?.timeout === 300000 ? 600000 : (params?.timeout ?? 600000),
+            },
           }
         }
         return p

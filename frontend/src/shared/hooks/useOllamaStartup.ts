@@ -2,21 +2,34 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { fetchOllamaModels } from '@/shared/ollama/client'
 import { useSettingsStore } from '@/stores/settingsStore'
+import type { OllamaConfig } from '@/shared/types'
 
 export type OllamaStatus = 'idle' | 'checking' | 'connected' | 'error'
 
+const FALLBACK_PORTS = [11434, 11435]
+
 function resolveModel(availableNames: string[], storedModel: string): string | null {
-  // 1. Stored model is available → keep it
   if (availableNames.includes(storedModel)) return null
 
-  // 2. Look for any translategemma variant (sorted for determinism)
   const variant = availableNames
     .filter((n) => n.toLowerCase().includes('translategemma'))
     .sort()[0]
 
-  if (variant) return variant
+  return variant ?? null
+}
 
-  // 3. Nothing suitable found → don't change
+async function tryPorts(
+  config: OllamaConfig,
+  ports: number[]
+): Promise<{ models: Awaited<ReturnType<typeof fetchOllamaModels>>; port: number } | null> {
+  for (const port of ports) {
+    try {
+      const models = await fetchOllamaModels({ ...config, port })
+      return { models, port }
+    } catch {
+      // try next port
+    }
+  }
   return null
 }
 
@@ -30,30 +43,39 @@ export function useOllamaStartup(): { ollamaStatus: OllamaStatus } {
 
     async function run() {
       setOllamaStatus('checking')
-      try {
-        const models = await fetchOllamaModels(ollama)
-        if (cancelled) return
 
-        setOllamaStatus('connected')
+      // Try configured port first, then fallbacks (dedup to avoid double-trying same port)
+      const portsToTry = [ollama.port, ...FALLBACK_PORTS].filter(
+        (p, i, arr) => arr.indexOf(p) === i
+      )
 
-        const names = models.map((m) => m.name)
-        const resolved = resolveModel(names, ollama.model)
+      const result = await tryPorts(ollama, portsToTry)
+      if (cancelled) return
 
-        if (resolved) {
-          setOllama({ model: resolved })
-          toast.info(`Modelo cambiado a "${resolved}" — "${ollama.model}" no está instalado.`)
-        }
-      } catch {
-        if (!cancelled) {
-          setOllamaStatus('error')
-        }
+      if (!result) {
+        setOllamaStatus('error')
+        return
+      }
+
+      setOllamaStatus('connected')
+
+      // Persist the working port if different from configured
+      if (result.port !== ollama.port) {
+        setOllama({ port: result.port })
+        toast.info(`Ollama found on port ${result.port} — settings updated.`)
+      }
+
+      // Resolve best model
+      const names = result.models.map((m) => m.name)
+      const resolved = resolveModel(names, ollama.model)
+      if (resolved) {
+        setOllama({ model: resolved })
+        toast.info(`Modelo cambiado a "${resolved}" — "${ollama.model}" no está instalado.`)
       }
     }
 
     run()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ollamaStatus }

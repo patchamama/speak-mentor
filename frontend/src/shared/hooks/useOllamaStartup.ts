@@ -5,8 +5,6 @@ import { useSettingsStore } from '@/stores/settingsStore'
 
 export type OllamaStatus = 'idle' | 'checking' | 'connected' | 'error'
 
-const DEFAULT_MODEL = 'translategemma:12b'
-
 function resolveModel(availableNames: string[], storedModel: string): string | null {
   // 1. Stored model is available → keep it
   if (availableNames.includes(storedModel)) return null

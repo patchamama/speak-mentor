@@ -6,9 +6,18 @@ import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useBackendStore } from '@/stores/backendStore'
 import { cn } from '@/lib/utils'
 import type { CEFRLevel, Lang } from '@/shared/types'
 import type { TranslationResponse } from '@/shared/ollama/schemas'
+
+function renderTextAsHtml(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .filter(Boolean)
+    .map((para) => `<p>${para.replace(/\n/g, '<br />')}</p>`)
+    .join('')
+}
 
 interface TranslationViewProps {
   result: TranslationResponse | null
@@ -39,7 +48,9 @@ export function TranslationView({
   const [targetLang, setTargetLang] = useState<Lang>('es')
   const [level, setLevel] = useState<CEFRLevel>(lastTranslationLevel)
   const [showAlternatives, setShowAlternatives] = useState(false)
+  const [renderedHtml, setRenderedHtml] = useState<string | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-translation-history')
+  const backendStatus = useBackendStore((s) => s.status)
 
   const swap = useCallback(() => {
     setSourceLang(targetLang)
@@ -58,6 +69,10 @@ export function TranslationView({
   }, [handleSubmit])
 
   const handleSave = useCallback(() => onSave(text, sourceLang, targetLang, level), [text, sourceLang, targetLang, level, onSave])
+  const handleRender = useCallback(() => {
+    if (!text.trim()) return
+    setRenderedHtml(renderTextAsHtml(text))
+  }, [text])
   const elapsed = useElapsedTimer(loading)
 
   return (
@@ -114,11 +129,14 @@ export function TranslationView({
           maxLength={2000}
           aria-label={`Texto en ${LANG_LABELS[sourceLang]} para traducir`}
         />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button onClick={handleSubmit} disabled={loading || !text.trim()} aria-busy={loading}>
             {loading ? <><Spinner className="mr-2" />Traduciendo... {elapsed}s</> : 'Traducir'}
           </Button>
-          {result && !savedSessionId && (
+          <Button variant="outline" onClick={handleRender} disabled={!text.trim()}>
+            Renderizar
+          </Button>
+          {result && !savedSessionId && backendStatus === 'available' && (
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               {saving ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar'}
             </Button>
@@ -129,6 +147,30 @@ export function TranslationView({
           <span className="ml-auto text-xs text-muted-foreground">{text.length}/2000</span>
         </div>
       </div>
+
+      {/* Rendered text */}
+      {renderedHtml && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Texto renderizado
+            </p>
+            <a
+              href={`https://translate.google.com/?sl=${sourceLang}&tl=${targetLang}&text=${encodeURIComponent(text)}&op=translate`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1"
+            >
+              Traducir con Google →
+            </a>
+          </div>
+          <div
+            lang={sourceLang}
+            className="rounded-lg border bg-muted/20 p-4 text-sm leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0"
+            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+          />
+        </div>
+      )}
 
       {/* Raw error */}
       {rawError && (

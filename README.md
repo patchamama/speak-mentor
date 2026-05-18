@@ -1,5 +1,7 @@
 # Speak Mentor
 
+**Live demo:** https://tinyurl.com/25ta34jd &nbsp;|&nbsp; https://patchamama.github.io/speak-mentor/
+
 > A local-first German language tutor powered by Ollama.
 
 Write German, get inline CEFR-aware corrections with color-coded error highlighting, multi-pass vocabulary enrichment, personalized exercises, translate between German and Spanish, and learn from curated examples of the most common German errors for Spanish speakers — all running on your own machine. No cloud APIs, no telemetry, no subscriptions.

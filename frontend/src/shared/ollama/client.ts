@@ -113,6 +113,15 @@ function resolvePositions(
   })
 }
 
+// Normalize the raw LLM object before schema validation to tolerate common model omissions:
+// - level_assessment missing: fill with neutral defaults so the schema doesn't reject
+// - tips over 3 items: handled by .transform() in schema, but preemptively slice here too
+function normalizeCorrectionObj(obj: Record<string, unknown>): void {
+  if (!obj.level_assessment || typeof obj.level_assessment !== 'object') {
+    obj.level_assessment = { detected_level: 'B1', target_level: 'B1', gap_notes: '' }
+  }
+}
+
 export async function correctText(
   config: OllamaConfig,
   prompt: BuiltPrompt,
@@ -120,7 +129,7 @@ export async function correctText(
   originalText: string
 ): Promise<CorrectionResponse> {
   let raw = await callOllama(config, prompt, model)
-  let parsed = safeParse(raw, CorrectionResponseSchema)
+  let parsed = safeParse(raw, CorrectionResponseSchema, normalizeCorrectionObj)
 
   if (!parsed.success) {
     // retry once at temperature 0
@@ -130,7 +139,7 @@ export async function correctText(
       options: { ...prompt.options, temperature: 0 },
     }
     raw = await callOllama(config, retryPrompt, model)
-    parsed = safeParse(raw, CorrectionResponseSchema)
+    parsed = safeParse(raw, CorrectionResponseSchema, normalizeCorrectionObj)
     if (!parsed.success) {
       throw new OllamaParseError(raw, parsed.error)
     }
@@ -165,9 +174,14 @@ export async function translateText(
   return parsed.data as TranslationResponse
 }
 
-function safeParse<T>(raw: string, schema: z.ZodType<T>): z.SafeParseReturnType<unknown, T> {
+function safeParse<T>(
+  raw: string,
+  schema: z.ZodType<T>,
+  normalize?: (obj: Record<string, unknown>) => void,
+): z.SafeParseReturnType<unknown, T> {
   try {
     const obj = JSON.parse(raw)
+    if (normalize && obj && typeof obj === 'object') normalize(obj as Record<string, unknown>)
     return schema.safeParse(obj)
   } catch {
     return { success: false, error: new z.ZodError([{ code: 'custom', message: 'Invalid JSON', path: [] }]) }

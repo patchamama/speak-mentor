@@ -8,7 +8,17 @@ import { CommonErrorsView } from './features/common-errors/CommonErrorsView'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useThemeStore } from './stores/themeStore'
 import { useFaviconRenderer } from './shared/hooks/useFaviconProgress'
+import { useOllamaStartup, type OllamaStatus } from './shared/hooks/useOllamaStartup'
+import { useBackendStatus } from './shared/hooks/useBackendStatus'
+import { useBackendStore } from './stores/backendStore'
 import { cn } from './lib/utils'
+
+const STATUS_DOT: Record<OllamaStatus, { color: string; label: string }> = {
+  idle:      { color: 'bg-muted-foreground/40', label: 'Ollama: pendiente' },
+  checking:  { color: 'bg-yellow-400 animate-pulse', label: 'Ollama: conectando…' },
+  connected: { color: 'bg-green-500', label: 'Ollama: conectado' },
+  error:     { color: 'bg-red-500', label: 'Ollama: sin conexión' },
+}
 
 type Page = 'correction' | 'translation' | 'common-errors' | 'stats' | 'settings'
 
@@ -24,6 +34,10 @@ export default function App() {
   const [page, setPage] = useState<Page>('correction')
   const { dark, toggle } = useThemeStore()
   useFaviconRenderer()
+  const { ollamaStatus } = useOllamaStartup()
+  useBackendStatus()
+  const backendStatus = useBackendStore((s) => s.status)
+  const dot = STATUS_DOT[ollamaStatus]
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -52,6 +66,20 @@ export default function App() {
           >
             {dark ? '☀' : '☾'}
           </button>
+          <span
+            title={dot.label}
+            aria-label={dot.label}
+            className={cn('h-2 w-2 rounded-full inline-block', dot.color)}
+          />
+          <span
+            title={`Backend: ${backendStatus}`}
+            aria-label={`Backend: ${backendStatus}`}
+            className={cn('h-2 w-2 rounded-full inline-block', {
+              'bg-muted-foreground/40 animate-pulse': backendStatus === 'checking',
+              'bg-green-500': backendStatus === 'available',
+              'bg-red-400': backendStatus === 'unavailable',
+            })}
+          />
           <span className="text-xs text-muted-foreground">v0.1.0</span>
         </div>
       </header>

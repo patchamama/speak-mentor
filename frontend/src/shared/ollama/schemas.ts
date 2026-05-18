@@ -46,7 +46,7 @@ export const CorrectionResponseSchema = z.object({
     by_type: z.record(z.string(), z.number()),
     main_focus: z.string(),
   }),
-  tips: z.array(z.string()).max(3),
+  tips: z.array(z.string()).transform((a) => a.slice(0, 3)),
 })
 
 export type CorrectionResponse = z.infer<typeof CorrectionResponseSchema>

@@ -107,11 +107,14 @@ OUTPUT JSON SCHEMA (strict):
     "main_focus": "string in {{EXPLANATION_LANG}} — top 1-2 areas to study"
   },
   "tips": [
-    "string in {{EXPLANATION_LANG}} — actionable tip, max 3 items"
+    "string in {{EXPLANATION_LANG}} — actionable tip"
   ]
+  (EXACTLY 1 to 3 items — NEVER more than 3)
 }
 
 IMPORTANT:
+- \`level_assessment\` is REQUIRED — always include detected_level, target_level, and gap_notes.
+- \`tips\` must have 1 to 3 items — NEVER more than 3.
 - If text is fully correct: \`errors: []\`, \`summary.error_count: 0\`, give a positive
   \`main_focus\` and 1 tip on how to push to next level.
 - Do NOT correct stylistic choices below the target level.

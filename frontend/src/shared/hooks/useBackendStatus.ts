@@ -5,6 +5,11 @@ export function useBackendStatus() {
   const setStatus = useBackendStore((s) => s.setStatus)
 
   useEffect(() => {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      setStatus('unavailable')
+      return
+    }
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 3000)
 

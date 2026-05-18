@@ -126,7 +126,6 @@ export function TranslationView({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          maxLength={2000}
           aria-label={`Texto en ${LANG_LABELS[sourceLang]} para traducir`}
         />
         <div className="flex items-center gap-3 flex-wrap">
@@ -144,7 +143,7 @@ export function TranslationView({
           {savedSessionId && (
             <span className="text-sm text-muted-foreground">✓ Guardado (#{savedSessionId})</span>
           )}
-          <span className="ml-auto text-xs text-muted-foreground">{text.length}/2000</span>
+          <span className="ml-auto text-xs text-muted-foreground">{text.length} chars</span>
         </div>
       </div>
 

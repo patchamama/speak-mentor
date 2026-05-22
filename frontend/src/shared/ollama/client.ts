@@ -1,4 +1,3 @@
-import ky from 'ky'
 import { z } from 'zod'
 import type { OllamaConfig } from '@/shared/types'
 import type { BuiltPrompt } from './promptBuilder'
@@ -8,81 +7,37 @@ import {
   type CorrectionResponse,
   type TranslationResponse,
 } from './schemas'
-import { useOllamaActivityStore } from '@/stores/ollamaActivityStore'
+import { OllamaProvider } from '@/shared/llm/providers/ollama'
+import { getQueueLength } from '@/shared/llm/queue'
+import type { LLMProvider } from '@/shared/llm/types'
 
-// ── Global serialization queue ────────────────────────────────────────────────
-// Only one Ollama request runs at a time; remaining requests wait in line.
-
-interface QueueItem {
-  run: () => Promise<string>
-  resolve: (value: string) => void
-  reject: (reason: unknown) => void
-}
-
-const _queue: QueueItem[] = []
-let _running = false
-
-function _drain() {
-  if (_running || _queue.length === 0) return
-  const item = _queue.shift()!
-  _running = true
-  useOllamaActivityStore.getState().setBusy(true)
-  item.run().then(item.resolve, item.reject).finally(() => {
-    _running = false
-    if (_queue.length === 0) useOllamaActivityStore.getState().setBusy(false)
-    _drain()
-  })
-}
-
-function _enqueue(run: () => Promise<string>): Promise<string> {
-  return new Promise((resolve, reject) => {
-    _queue.push({ run, resolve, reject })
-    _drain()
-  })
-}
-
-export function getOllamaQueueLength(): number {
-  return _queue.length + (_running ? 1 : 0)
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
-function getBaseUrl(config: OllamaConfig): string {
-  return `${config.url}:${config.port}`
-}
-
-export interface OllamaModel {
+export type OllamaModel = {
   name: string
   size: number
   modified_at: string
 }
 
-export async function fetchOllamaModels(config: OllamaConfig): Promise<OllamaModel[]> {
-  const data = await ky.get(`${getBaseUrl(config)}/api/tags`).json<{ models: OllamaModel[] }>()
-  return data.models ?? []
+function makeProvider(config: OllamaConfig, modelOverride?: string, keepAliveOverride?: number): LLMProvider {
+  return new OllamaProvider({
+    provider: 'ollama',
+    url: config.url,
+    port: config.port,
+    model: modelOverride ?? config.model,
+    keepAlive: keepAliveOverride ?? config.keepAlive,
+  })
 }
 
-async function _callOllamaDirect(
-  config: OllamaConfig,
-  prompt: BuiltPrompt,
-  model: string,
-  keepAlive: string | number = -1,
-): Promise<string> {
-  const response = await ky.post(`${getBaseUrl(config)}/api/chat`, {
-    json: {
-      model,
-      format: prompt.format,
-      stream: false,
-      keep_alive: keepAlive,
-      options: prompt.options,
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user },
-      ],
-    },
-    timeout: prompt.timeout,
-  }).json<{ message: { content: string } }>()
+export function getOllamaQueueLength(): number {
+  return getQueueLength()
+}
 
-  return response.message.content
+export async function fetchOllamaModels(config: OllamaConfig): Promise<OllamaModel[]> {
+  const models = await makeProvider(config).listModels()
+  return models.map((m) => ({
+    name: m.name,
+    size: m.size ?? 0,
+    modified_at: m.modified_at ?? '',
+  }))
 }
 
 export function callOllama(
@@ -91,7 +46,8 @@ export function callOllama(
   model: string,
   keepAlive: string | number = -1,
 ): Promise<string> {
-  return _enqueue(() => _callOllamaDirect(config, prompt, model, keepAlive))
+  const ka = typeof keepAlive === 'number' ? keepAlive : Number(keepAlive)
+  return makeProvider(config, model, ka).chat(prompt)
 }
 
 function resolvePositions(
@@ -116,9 +72,6 @@ function resolvePositions(
   })
 }
 
-// Normalize the raw LLM object before schema validation to tolerate common model omissions:
-// - level_assessment missing: fill with neutral defaults so the schema doesn't reject
-// - tips over 3 items: handled by .transform() in schema, but preemptively slice here too
 function normalizeCorrectionObj(obj: Record<string, unknown>): void {
   if (!obj.level_assessment || typeof obj.level_assessment !== 'object') {
     obj.level_assessment = { detected_level: 'B1', target_level: 'B1', gap_notes: '' }

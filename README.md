@@ -2,9 +2,9 @@
 
 **Live demo:** https://tinyurl.com/25ta34jd &nbsp;|&nbsp; https://patchamama.github.io/speak-mentor/
 
-> A local-first German language tutor powered by Ollama.
+> A local-first German language tutor with pluggable LLM backends — Ollama by default, optional Anthropic / Google Gemini / OpenAI.
 
-Write German, get inline CEFR-aware corrections with color-coded error highlighting, multi-pass vocabulary enrichment, personalized exercises, translate between German and Spanish, and learn from curated examples of the most common German errors for Spanish speakers — all running on your own machine. No cloud APIs, no telemetry, no subscriptions.
+Write German, get inline CEFR-aware corrections with color-coded error highlighting, multi-pass vocabulary enrichment, personalized exercises, translate between German and Spanish, and learn from curated examples of the most common German errors for Spanish speakers. Ollama runs entirely on your own machine; remote providers are opt-in and gated behind an encrypted master password (or a server-side proxy that keeps the API key off the browser). No telemetry, no subscriptions.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -23,7 +23,10 @@ Write German, get inline CEFR-aware corrections with color-coded error highlight
 | **Translation (DE↔ES)** | Level-adapted translation with vocabulary notes, grammar notes, register alternatives |
 | **Common errors** | 15 categories, 55 curated examples of the most frequent mistakes for Spanish speakers |
 | **History & Stats** | Paginated session history, error breakdowns by type / level / timeline, JSON export |
-| **Settings** | Ollama URL, port, model, keep-alive, temperature, context window, per-pass prompt editor |
+| **Multi-provider LLM** | Ollama (local), Anthropic, Google Gemini, OpenAI — pick per session in Settings |
+| **Encrypted API keys** | Remote keys cifrados con PBKDF2-SHA256 + AES-GCM-256; contraseña maestra solo en memoria |
+| **Backend proxy** | Optional Flask `/api/llm/*` proxy keeps keys in server env vars instead of the browser |
+| **Settings** | Provider picker, model dropdown per provider, manual model override, prompt editor, per-pass pipeline, model params |
 | **Pipeline control** | Toggle advanced mode (all 3 passes) vs simple (correction only) per submission |
 | **Dark mode** | Persisted to `localStorage` |
 | **Keyboard shortcut** | `Cmd+Enter` / `Ctrl+Enter` to submit |
@@ -115,15 +118,23 @@ frontend/src/
 | [pytest](https://pytest.org) | ≥ 8.2 | Test suite |
 | SQLite | bundled | Local database |
 
-### LLM
+### LLM providers
 
-| | |
-|---|---|
-| **Runtime** | [Ollama](https://ollama.com) — called **directly from the browser** (no backend proxy) |
-| **Default model** | `translategemma:12b` |
-| **Supported** | Any model installed in Ollama |
-| **Protocol** | `POST /api/chat` with `format: "json"` and `keep_alive: -1` |
-| **Validation** | Zod schemas with alias map for model-hallucinated error types |
+The frontend talks to a small `LLMProvider` interface (`chat`, `listModels`). Each provider is a thin adapter:
+
+| Provider | Default mode | Notes |
+|---|---|---|
+| [Ollama](https://ollama.com) | Browser → `localhost:11434` | No credentials. Default. Recommended model: `translategemma:12b`. |
+| [Anthropic](https://docs.anthropic.com) | Browser → `api.anthropic.com` (direct) | Uses `anthropic-dangerous-direct-browser-access: true`. Switch to backend proxy any time. |
+| [Google Gemini](https://ai.google.dev) | Browser → `generativelanguage.googleapis.com` (direct) | Key passed as `?key=` query param. Switch to backend proxy any time. |
+| [OpenAI](https://platform.openai.com) | Browser → Flask → `api.openai.com` | Always proxied — OpenAI does not send permissive CORS headers, so direct browser calls are impossible. |
+
+**Key storage**:
+- Ollama: no key, no storage.
+- Anthropic / Gemini (direct mode): API key cifrada en `localStorage` con PBKDF2-SHA256 (600k iter) + AES-GCM-256. The derived key lives only in memory for the session — closing the tab re-locks it.
+- Backend proxy mode (mandatory for OpenAI, optional for the rest): API key read from server env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`); the frontend never sees it.
+
+**Validation**: Zod schemas with alias map for model-hallucinated error types. JSON enforced via `format: "json"` (Ollama), `response_format: {type: "json_object"}` (OpenAI), `responseMimeType: "application/json"` (Gemini), or system-prompt reinforcement (Anthropic). Auto-retry once at `temperature=0` on schema failure.
 
 ---
 
@@ -131,8 +142,11 @@ frontend/src/
 
 - **Node.js** ≥ 20 — [nodejs.org](https://nodejs.org)
 - **Python** ≥ 3.11 — [python.org](https://python.org)
-- **Ollama** — [ollama.com](https://ollama.com)
-- A model pulled: `ollama pull translategemma:12b`
+- One LLM source. Pick at least one:
+  - **Ollama** (recommended default) — [ollama.com](https://ollama.com), then `ollama pull translategemma:12b`
+  - **Anthropic** API key from [console.anthropic.com](https://console.anthropic.com)
+  - **Google Gemini** API key from [aistudio.google.com](https://aistudio.google.com)
+  - **OpenAI** API key from [platform.openai.com](https://platform.openai.com) (requires the backend running)
 
 ---
 
@@ -195,6 +209,24 @@ SQLite database is created automatically at `backend/instance/speak_mentor.db` o
 ./start-backend.sh      # Flask backend
 ./start-frontend.sh     # Vite dev server
 ```
+
+### 6. Configure a remote provider (optional)
+
+Open **Settings → Conexión** and pick a proveedor.
+
+**Anthropic / Gemini — direct mode (default):**
+1. Paste your API key into the form.
+2. Pick a master password (min 6 chars) and confirm.
+3. Click **Guardar y verificar** — the app encrypts the key, calls `listModels()` to verify it works, and stores the encrypted envelope in `localStorage`.
+4. On the next session you'll see an **Unlock** panel asking for the master password. Wrong password → clear error + "Olvidar y configurar nueva" escape hatch.
+
+**OpenAI — backend proxy (mandatory):**
+1. Stop the backend, set `OPENAI_API_KEY=sk-...` in the environment, restart with `flask --app wsgi:app run --port 5001`.
+2. Pick **OpenAI** in the provider dropdown. Status shows "🔓 OpenAI listo (vía backend)".
+3. Click **Habilitar** → model dropdown loads from `/api/llm/models?provider=openai`.
+
+**Backend proxy for Anthropic / Gemini (optional):**
+After unlocking the provider, toggle **Usar backend proxy**. Future calls go through Flask using the server-side key; the encrypted local key remains as a fallback.
 
 ---
 
@@ -282,23 +314,29 @@ Base URL: `http://localhost:5001/api`
 | `GET` | `/stats/by-level` | Error count per CEFR level |
 | `GET` | `/stats/timeline?days=30` | Daily error counts, last N days |
 | `GET` | `/stats/top-rules?limit=10` | Most broken grammar rules |
+| `GET` | `/llm/providers` | `{openai, anthropic, gemini}` flags — which providers have a server-side key |
+| `GET` | `/llm/models?provider=X` | Live model list for the given provider (uses server-side key) |
+| `POST` | `/llm/chat` | Proxy a chat call: `{provider, model, system, user, options, timeout}` → `{content}` |
 
 ---
 
 ## Settings Reference
 
-All settings are persisted in `localStorage` under `speak-mentor-settings`.
+Settings persist in `localStorage` under `speak-mentor-settings`. Decrypted API keys do **not** persist — they live in a separate in-memory Zustand store and die with the tab.
 
 | Setting | Default | Description |
 |---|---|---|
+| Active provider | `ollama` | `ollama` / `anthropic` / `gemini` / `openai` |
 | Ollama URL | `http://localhost` | Ollama host |
-| Port | `11434` | Ollama port |
-| Model | `translategemma:12b` | Active model (auto-detected from installed models) |
+| Ollama port | `11434` | Ollama port |
+| Ollama model | `translategemma:12b` | Active model (auto-detected from installed models) |
 | Keep-alive | `-1` (indefinite) | How long the model stays in VRAM after the last request |
+| Remote provider entries | `{}` | Per-provider: `{encryptedApiKey, model, baseUrl?, useBackend?}`. `encryptedApiKey` omitted for backend-only providers (OpenAI). |
+| Use backend proxy | off | Per remote provider — when on, calls route through `/api/llm/*` using a server-side key |
 | Temperature | `0.2` | 0 = deterministic, 1 = creative |
 | Top P | `0.9` | Sampling diversity |
 | Context (tokens) | `4096` | Model context window |
-| Timeout | `300s` | Max wait per request |
+| Timeout | `600s` | Max wait per request |
 | Pipeline passes | all 3 on | Correction (always) + Vocabulary + Exercises |
 | System prompts | built-in | Editable per pass: correction, translation, vocabulary, exercises |
 
@@ -313,6 +351,10 @@ All settings are persisted in `localStorage` under `speak-mentor-settings`.
 | `DATABASE_URL` | `sqlite:///speak_mentor.db` | SQLAlchemy connection string |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:5174` | Allowed origins |
 | `SECRET_KEY` | `dev-secret-key` | Flask secret key |
+| `OPENAI_API_KEY` | — | If set, enables OpenAI via `/api/llm/*`. Required for OpenAI to work at all. |
+| `ANTHROPIC_API_KEY` | — | If set, allows Anthropic via the backend proxy as an alternative to per-user encrypted keys. |
+| `GEMINI_API_KEY` | — | If set, allows Gemini via the backend proxy. |
+| `LLM_PROXY_TIMEOUT` | `600` | Per-request timeout in seconds for outbound provider calls. |
 
 ### Ollama
 
@@ -343,7 +385,6 @@ All settings are persisted in `localStorage` under `speak-mentor-settings`.
 - TTS audio for corrected sentences
 - Abort button for in-flight requests
 - React Router for deep linking
-- Cloud LLM option (OpenAI, Anthropic)
 - Multi-user accounts
 
 ---
@@ -361,7 +402,10 @@ All settings are persisted in `localStorage` under `speak-mentor-settings`.
 
 ## Privacy
 
-All data stays on your machine. The app calls Ollama on `localhost`. The Flask backend writes only to a local SQLite file. No analytics, no external requests of any kind.
+- **Ollama (default)**: 100% local. The browser calls `localhost:11434`; nothing leaves your machine.
+- **Anthropic / Gemini (direct mode)**: your input text and the corrected output transit to the provider's API. The API key never leaves your browser unencrypted — it's stored only as an AES-GCM envelope and decrypted in memory using your master password.
+- **Backend proxy mode (mandatory for OpenAI, optional for the others)**: text transits through your own Flask backend and then to the provider. The provider key lives in your server's environment, never in the browser.
+- **Sessions, errors, stats**: written only to the local SQLite file at `backend/instance/speak_mentor.db`. No analytics, no telemetry.
 
 ---
 

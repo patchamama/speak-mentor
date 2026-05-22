@@ -22,6 +22,7 @@ export function OpenAIPanel() {
   const [modelsLoading, setModelsLoading] = useState(false)
   const [modelsError, setModelsError] = useState<string | null>(null)
   const [manualModel, setManualModel] = useState(entry?.model ?? '')
+  const [testing, setTesting] = useState(false)
 
   const backendHasKey = availability?.openai === true
   const isConfigured = Boolean(entry)
@@ -42,6 +43,21 @@ export function OpenAIPanel() {
       setModelsError(err instanceof Error ? err.message : 'Error al listar modelos')
     } finally {
       setModelsLoading(false)
+    }
+  }
+
+  const testConnection = async () => {
+    setTesting(true)
+    try {
+      const list = await fetchBackendModels('openai')
+      setModels(list)
+      toast.success(`Conexión OK — ${list.length} modelos disponibles`)
+    } catch (err) {
+      toast.error(
+        `Falló la conexión: ${err instanceof Error ? err.message : 'error desconocido'}`,
+      )
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -177,6 +193,10 @@ cd backend && flask run --port 5001`}
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={testConnection} disabled={testing}>
+              {testing ? <Spinner className="mr-2" /> : null}
+              Probar conexión
+            </Button>
             <Button variant="outline" onClick={loadModels} disabled={modelsLoading}>
               {modelsLoading ? <Spinner className="mr-2" /> : null}
               Recargar modelos

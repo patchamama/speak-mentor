@@ -4,6 +4,7 @@ import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useUnlockStore } from '@/stores/unlockStore'
 import { encryptSecret, decryptSecret, DecryptError } from '@/shared/crypto/secret'
 import { buildProvider } from '@/shared/llm/registry'
+import { useBackendProviders } from '@/shared/llm/hooks'
 import type { LLMConfig, LLMModel } from '@/shared/llm/types'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -72,7 +73,9 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
       decryptedKey={decryptedKey}
       currentModel={entry.model}
       baseUrl={entry.baseUrl}
+      useBackend={entry.useBackend ?? false}
       onChangeModel={(model) => updateRemoteProvider(providerId, { model })}
+      onToggleBackend={(useBackend) => updateRemoteProvider(providerId, { useBackend })}
       onLock={() => clearProvider(providerId)}
       onForget={() => {
         removeRemoteProvider(providerId)
@@ -299,7 +302,9 @@ function UnlockedPanel({
   decryptedKey,
   currentModel,
   baseUrl,
+  useBackend,
   onChangeModel,
+  onToggleBackend,
   onLock,
   onForget,
 }: {
@@ -308,22 +313,33 @@ function UnlockedPanel({
   decryptedKey: string
   currentModel: string
   baseUrl: string | undefined
+  useBackend: boolean
   onChangeModel: (model: string) => void
+  onToggleBackend: (useBackend: boolean) => void
   onLock: () => void
   onForget: () => void
 }) {
+  const { availability, loading: backendLoading } = useBackendProviders()
+  const backendHasKey = availability?.[providerId] === true
+
   const [models, setModels] = useState<LLMModel[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
   const [modelsError, setModelsError] = useState<string | null>(null)
   const [manualModel, setManualModel] = useState(currentModel)
+  const [testing, setTesting] = useState(false)
+
+  const buildActiveProvider = () => {
+    const config = buildRemoteConfig(providerId, currentModel, baseUrl)
+    return useBackend
+      ? buildProvider(config, { useBackend: true })
+      : buildProvider(config, { apiKey: decryptedKey })
+  }
 
   const fetchModels = async () => {
     setLoadingModels(true)
     setModelsError(null)
     try {
-      const config = buildRemoteConfig(providerId, currentModel, baseUrl)
-      const provider = buildProvider(config, { apiKey: decryptedKey })
-      const list = await provider.listModels()
+      const list = await buildActiveProvider().listModels()
       setModels(list)
     } catch (err) {
       setModelsError(err instanceof Error ? err.message : 'No se pudieron cargar los modelos')
@@ -332,19 +348,62 @@ function UnlockedPanel({
     }
   }
 
+  const testConnection = async () => {
+    setTesting(true)
+    try {
+      const list = await buildActiveProvider().listModels()
+      setModels(list)
+      toast.success(`Conexión OK — ${list.length} modelos disponibles`)
+    } catch (err) {
+      toast.error(
+        `Falló la conexión: ${err instanceof Error ? err.message : 'error desconocido'}`,
+      )
+    } finally {
+      setTesting(false)
+    }
+  }
+
   useEffect(() => {
-    if (models.length === 0) fetchModels()
+    setModels([])
+    void fetchModels()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [useBackend])
 
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs flex items-center justify-between gap-3">
-        <p>🔓 <span className="font-semibold">{label}</span> desbloqueado en esta sesión</p>
+        <p>
+          🔓 <span className="font-semibold">{label}</span> desbloqueado · modo:{' '}
+          <span className="font-semibold">{useBackend ? 'backend proxy' : 'directo'}</span>
+        </p>
         <Button size="sm" variant="outline" onClick={onLock}>
           Bloquear
         </Button>
       </div>
+
+      {!backendLoading && (
+        <label
+          className={`flex items-start gap-3 rounded-md border p-3 text-xs ${
+            backendHasKey ? 'cursor-pointer hover:bg-muted/30' : 'opacity-60'
+          }`}
+        >
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-border"
+            checked={useBackend}
+            disabled={!backendHasKey}
+            onChange={(e) => onToggleBackend(e.target.checked)}
+          />
+          <div className="space-y-0.5">
+            <p className="font-semibold">Usar backend proxy</p>
+            <p className="text-muted-foreground">
+              {backendHasKey
+                ? `Las llamadas pasan por Flask con la key configurada en el backend. Tu API key local queda como fallback.`
+                : `El backend no tiene ${providerId.toUpperCase()}_API_KEY configurada. Setealo en el entorno del backend para activar.`}
+            </p>
+          </div>
+        </label>
+      )}
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">
@@ -400,6 +459,10 @@ function UnlockedPanel({
       </Field>
 
       <div className="flex flex-wrap gap-3">
+        <Button variant="outline" onClick={testConnection} disabled={testing}>
+          {testing ? <Spinner className="mr-2" /> : null}
+          Probar conexión
+        </Button>
         <Button variant="outline" onClick={fetchModels} disabled={loadingModels}>
           {loadingModels ? <Spinner className="mr-2" /> : null}
           Recargar modelos

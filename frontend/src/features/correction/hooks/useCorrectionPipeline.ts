@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
+import { toast } from 'sonner'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
-import { callOllama } from '@/shared/ollama/client'
+import { useActiveLLMProvider } from '@/shared/llm/hooks'
+import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { CEFRLevel, Lang, CorrectionPassId } from '@/shared/types'
 import { CorrectionResponseSchema } from '@/shared/ollama/schemas'
 import { z } from 'zod'
@@ -112,7 +114,8 @@ const initialState = (): PipelineState => ({
 })
 
 export function useCorrectionPipeline() {
-  const { ollama, modelParams, prompts, pipeline } = useSettingsStore()
+  const { modelParams, prompts, pipeline } = useSettingsStore()
+  const { provider, locked } = useActiveLLMProvider()
   const [state, setState] = useState<PipelineState>(initialState())
 
   const updatePass = useCallback(
@@ -145,7 +148,7 @@ export function useCorrectionPipeline() {
           systemOverride: prompts.vocabularySystem,
           modelParams,
         })
-        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
+        const rawStr = await provider!.chat(built)
         const data = VocabularyResponseSchema.parse(JSON.parse(rawStr))
         setState((prev) => ({
           ...prev,
@@ -160,7 +163,7 @@ export function useCorrectionPipeline() {
         })
       }
     },
-    [ollama, modelParams, prompts, updatePass],
+    [provider, modelParams, prompts, updatePass],
   )
 
   const rerunExercises = useCallback(
@@ -184,7 +187,7 @@ export function useCorrectionPipeline() {
           systemOverride: prompts.exercisesSystem,
           modelParams,
         })
-        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
+        const rawStr = await provider!.chat(built)
         const data = ExercisesResponseSchema.parse(JSON.parse(rawStr))
         setState((prev) => ({
           ...prev,
@@ -199,12 +202,20 @@ export function useCorrectionPipeline() {
         })
       }
     },
-    [ollama, modelParams, prompts, updatePass],
+    [provider, modelParams, prompts, updatePass],
   )
 
   // ── Full pipeline run ─────────────────────────────────────────────────────
   const run = useCallback(
     async (text: string, level: CEFRLevel, explanationLang: Lang = 'es', passesOverride?: CorrectionPassId[]) => {
+      if (!provider) {
+        toast.error(
+          locked
+            ? `Desbloqueá ${PROVIDER_LABELS[locked]} en Configuración → Conexión.`
+            : 'Configurá un proveedor de LLM en Configuración → Conexión.',
+        )
+        return
+      }
       setState(initialState())
       const passes = passesOverride ?? pipeline.passes
 
@@ -222,7 +233,7 @@ export function useCorrectionPipeline() {
           systemOverride: prompts.correctionSystem,
           modelParams,
         })
-        const rawStr = await callOllama(ollama, built, ollama.model, ollama.keepAlive)
+        const rawStr = await provider!.chat(built)
         correctionData = CorrectionResponseSchema.parse(JSON.parse(rawStr))
         updatePass('correction', {
           status: 'done',
@@ -241,7 +252,7 @@ export function useCorrectionPipeline() {
       // ── PASS 1.5: Verification ────────────────────────────────────
       try {
         const verifyBuilt = buildPrompt({ mode: 'verification', correctedText: correctionData.corrected, modelParams })
-        const verifyRaw = await callOllama(ollama, verifyBuilt, ollama.model, ollama.keepAlive)
+        const verifyRaw = await provider!.chat(verifyBuilt)
         const verifyResult = JSON.parse(verifyRaw) as { ok: boolean; fixed: string | null }
         if (!verifyResult.ok && verifyResult.fixed) {
           correctionData = { ...correctionData, corrected: verifyResult.fixed }
@@ -261,7 +272,7 @@ export function useCorrectionPipeline() {
         await rerunExercises(correctionData, level, explanationLang)
       }
     },
-    [ollama, modelParams, prompts, pipeline, updatePass, rerunVocabulary, rerunExercises],
+    [provider, locked, modelParams, prompts, pipeline, updatePass, rerunVocabulary, rerunExercises],
   )
 
   const isRunning =

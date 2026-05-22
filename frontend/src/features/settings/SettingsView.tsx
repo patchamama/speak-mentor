@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useSettingsStore, DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
-import { useOllamaModels } from './hooks/useOllamaModels'
 import { Button } from '@/shared/ui/Button'
-import { Spinner } from '@/shared/ui/Spinner'
-import type { OllamaConfig, ModelParams, CorrectionPassId } from '@/shared/types'
-
-const DEFAULT_MODEL = 'translategemma:12b'
+import { OllamaConnectionForm } from './components/OllamaConnectionForm'
+import { RemoteProviderPanel } from './components/RemoteProviderPanel'
+import { PROVIDER_LABELS } from '@/shared/llm/registry'
+import type { LLMProviderId } from '@/shared/llm/types'
+import type { ModelParams, CorrectionPassId } from '@/shared/types'
 
 type SettingsTab = 'connection' | 'params' | 'pipeline' | 'prompts' | 'terminal'
 
@@ -38,34 +38,11 @@ const inputClass =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export function SettingsView() {
-  const { ollama, setOllama, modelParams, setModelParams, prompts, setPrompts, resetPrompts, pipeline, setPipeline } =
+  const { modelParams, setModelParams, prompts, setPrompts, resetPrompts, pipeline, setPipeline } =
     useSettingsStore()
-  const { models, loading, error, testConnection } = useOllamaModels()
+  const activeProvider = useSettingsStore((s) => s.activeProvider)
+  const setActiveProvider = useSettingsStore((s) => s.setActiveProvider)
   const [tab, setTab] = useState<SettingsTab>('connection')
-
-  // ── Connection form ────────────────────────────────────────────────────────
-  const { register: regConn, handleSubmit: handleConn, setValue } = useForm<OllamaConfig>({
-    defaultValues: ollama,
-  })
-
-  // Keep form in sync when the store is updated externally (e.g. auto-detected port/model at startup)
-  useEffect(() => {
-    setValue('url', ollama.url)
-    setValue('port', ollama.port)
-    setValue('model', ollama.model)
-    setValue('keepAlive', ollama.keepAlive)
-  }, [ollama, setValue])
-
-  useEffect(() => {
-    if (models.length === 0) return
-    const currentIsListed = models.some((m) => m.name === ollama.model)
-    if (!currentIsListed) setValue('model', DEFAULT_MODEL)
-  }, [models, ollama.model, setValue])
-
-  const onSaveConnection = (data: OllamaConfig) => {
-    setOllama({ ...data, port: Number(data.port) })
-    toast.success('Configuración guardada')
-  }
 
   // ── Params form ────────────────────────────────────────────────────────────
   const { register: regParams, handleSubmit: handleParams } = useForm<ModelParams>({
@@ -155,79 +132,34 @@ export function SettingsView() {
 
       {/* ── Connection ──────────────────────────────────────────────────────── */}
       {tab === 'connection' && (
-        <form onSubmit={handleConn(onSaveConnection)} className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="url">URL</label>
-            <input id="url" className={inputClass} {...regConn('url', { required: true })} />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="port">Puerto</label>
-            <input
-              id="port"
-              type="number"
+            <label className="text-sm font-medium" htmlFor="provider-select">Proveedor</label>
+            <select
+              id="provider-select"
               className={inputClass}
-              {...regConn('port', { required: true, valueAsNumber: true })}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium" htmlFor="model">Modelo</label>
-              {models.length > 0 && (
-                <span className="text-xs text-muted-foreground">{models.length} instalados</span>
-              )}
-            </div>
-
-            {models.length > 0 ? (
-              <select id="model" className={inputClass} {...regConn('model', { required: true })}>
-                {[...models].sort((a, b) => a.name.localeCompare(b.name)).map((m) => (
-                  <option key={m.name} value={m.name}>{m.name}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="model"
-                className={inputClass}
-                placeholder={DEFAULT_MODEL}
-                {...regConn('model', { required: true })}
-              />
-            )}
-
-            {models.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Probá la conexión para cargar los modelos disponibles.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="keepAlive">
-              Keep-alive del modelo
-            </label>
-            <select id="keepAlive" className={inputClass} {...regConn('keepAlive', { valueAsNumber: true })}>
-              <option value={-1}>Indefinido (recomendado para pipeline)</option>
-              <option value={3600}>1 hora</option>
-              <option value={1800}>30 minutos</option>
-              <option value={600}>10 minutos</option>
-              <option value={300}>5 minutos (default Ollama)</option>
-              <option value={0}>Descargar después de cada request</option>
+              value={activeProvider}
+              onChange={(e) => setActiveProvider(e.target.value as LLMProviderId)}
+            >
+              <option value="ollama">{PROVIDER_LABELS.ollama}</option>
+              <option value="anthropic">{PROVIDER_LABELS.anthropic}</option>
+              <option value="gemini">{PROVIDER_LABELS.gemini}</option>
+              <option value="openai" disabled>{PROVIDER_LABELS.openai} (requiere backend — próximo PR)</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Mantiene el modelo en VRAM entre requests del pipeline. "Indefinido" evita recargas entre passes.
+              Ollama corre localmente sin credenciales. Los proveedores remotos requieren API key
+              y una contraseña maestra para cifrarla.
             </p>
           </div>
 
-          <div className="flex gap-3">
-            <Button type="submit">Guardar</Button>
-            <Button type="button" variant="outline" onClick={testConnection} disabled={loading}>
-              {loading ? <Spinner className="mr-2" /> : null}
-              Probar conexión
-            </Button>
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
+          {activeProvider === 'ollama' && <OllamaConnectionForm />}
+          {activeProvider === 'anthropic' && (
+            <RemoteProviderPanel providerId="anthropic" label={PROVIDER_LABELS.anthropic} />
+          )}
+          {activeProvider === 'gemini' && (
+            <RemoteProviderPanel providerId="gemini" label={PROVIDER_LABELS.gemini} />
+          )}
+        </div>
       )}
 
       {/* ── Model params ────────────────────────────────────────────────────── */}

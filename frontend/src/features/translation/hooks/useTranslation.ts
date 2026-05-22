@@ -4,6 +4,8 @@ import { buildPrompt } from '@/shared/ollama/promptBuilder'
 import { translateText, OllamaParseError } from '@/shared/ollama/client'
 import { saveSession } from '@/shared/api/flaskClient'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useActiveLLMProvider } from '@/shared/llm/hooks'
+import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { CEFRLevel, Lang } from '@/shared/types'
 import type { TranslationResponse } from '@/shared/ollama/schemas'
 
@@ -19,7 +21,8 @@ interface UseTranslationReturn {
 }
 
 export function useTranslation(): UseTranslationReturn {
-  const { ollama, modelParams, prompts, setLastTranslationLevel } = useSettingsStore()
+  const { modelParams, prompts, setLastTranslationLevel } = useSettingsStore()
+  const { provider, locked, config } = useActiveLLMProvider()
   const [result, setResult] = useState<TranslationResponse | null>(null)
   const [rawError, setRawError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -27,6 +30,14 @@ export function useTranslation(): UseTranslationReturn {
   const [savedSessionId, setSavedSessionId] = useState<number | null>(null)
 
   const translate = async (text: string, sourceLang: Lang, targetLang: Lang, level: CEFRLevel) => {
+    if (!provider) {
+      toast.error(
+        locked
+          ? `Desbloqueá ${PROVIDER_LABELS[locked]} en Configuración → Conexión.`
+          : 'Configurá un proveedor de LLM en Configuración → Conexión.',
+      )
+      return
+    }
     setLoading(true)
     setRawError(null)
     setResult(null)
@@ -38,14 +49,14 @@ export function useTranslation(): UseTranslationReturn {
         systemOverride: prompts.translationSystem,
         modelParams,
       })
-      const response = await translateText(ollama, prompt, ollama.model)
+      const response = await translateText(provider, prompt)
       setResult(response)
     } catch (err) {
       if (err instanceof OllamaParseError) {
         setRawError(err.rawOutput)
         toast.error('El modelo devolvió una respuesta inválida.')
       } else {
-        toast.error('Error al conectar con Ollama. Verificá la configuración.')
+        toast.error('Error al conectar con el proveedor. Verificá la configuración.')
       }
     } finally {
       setLoading(false)
@@ -64,7 +75,7 @@ export function useTranslation(): UseTranslationReturn {
         input_text: text,
         output_text: result.translation,
         raw_llm: JSON.stringify(result),
-        model: ollama.model,
+        model: config?.model,
         errors: [],
       })
       setSavedSessionId(session_id)

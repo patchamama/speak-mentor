@@ -6,6 +6,18 @@ import { VOCABULARY_SYSTEM_TEMPLATE } from '@/shared/ollama/templates/vocabulary
 import { EXERCISES_SYSTEM_TEMPLATE } from '@/shared/ollama/templates/exercises-system'
 import type { OllamaConfig, ModelParams, PromptOverrides, CEFRLevel, CorrectionPipelineConfig } from '@/shared/types'
 import { DEFAULT_PIPELINE_CONFIG } from '@/shared/types'
+import type { LLMProviderId } from '@/shared/llm/types'
+import type { EncryptedSecret } from '@/shared/crypto/secret'
+
+export type RemoteProviderId = Exclude<LLMProviderId, 'ollama'>
+
+export interface RemoteProviderEntry {
+  encryptedApiKey: EncryptedSecret
+  model: string
+  baseUrl?: string
+}
+
+export type RemoteProvidersMap = Partial<Record<RemoteProviderId, RemoteProviderEntry>>
 
 export const DEFAULT_MODEL_PARAMS: ModelParams = {
   temperature: 0.2,
@@ -20,13 +32,19 @@ export interface ExtendedPromptOverrides extends PromptOverrides {
 }
 
 interface SettingsState {
+  activeProvider: LLMProviderId
   ollama: OllamaConfig
+  remoteProviders: RemoteProvidersMap
   modelParams: ModelParams
   prompts: ExtendedPromptOverrides
   pipeline: CorrectionPipelineConfig
   lastCorrectionLevel: CEFRLevel
   lastTranslationLevel: CEFRLevel
+  setActiveProvider: (provider: LLMProviderId) => void
   setOllama: (config: Partial<OllamaConfig>) => void
+  setRemoteProvider: (provider: RemoteProviderId, entry: RemoteProviderEntry) => void
+  updateRemoteProvider: (provider: RemoteProviderId, patch: Partial<RemoteProviderEntry>) => void
+  removeRemoteProvider: (provider: RemoteProviderId) => void
   setModelParams: (params: Partial<ModelParams>) => void
   setPrompts: (overrides: Partial<ExtendedPromptOverrides>) => void
   resetPrompts: () => void
@@ -38,12 +56,14 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
+      activeProvider: 'ollama',
       ollama: {
         url: 'http://localhost',
         port: 11434,
         model: 'translategemma:12b',
         keepAlive: -1,
       },
+      remoteProviders: {},
       modelParams: DEFAULT_MODEL_PARAMS,
       prompts: {
         correctionSystem: CORRECTION_SYSTEM_TEMPLATE,
@@ -54,8 +74,28 @@ export const useSettingsStore = create<SettingsState>()(
       pipeline: DEFAULT_PIPELINE_CONFIG,
       lastCorrectionLevel: 'B1',
       lastTranslationLevel: 'B1',
+      setActiveProvider: (provider) => set({ activeProvider: provider }),
       setOllama: (config) =>
         set((state) => ({ ollama: { ...state.ollama, ...config } })),
+      setRemoteProvider: (provider, entry) =>
+        set((state) => ({ remoteProviders: { ...state.remoteProviders, [provider]: entry } })),
+      updateRemoteProvider: (provider, patch) =>
+        set((state) => {
+          const current = state.remoteProviders[provider]
+          if (!current) return state
+          return {
+            remoteProviders: {
+              ...state.remoteProviders,
+              [provider]: { ...current, ...patch },
+            },
+          }
+        }),
+      removeRemoteProvider: (provider) =>
+        set((state) => {
+          const next = { ...state.remoteProviders }
+          delete next[provider]
+          return { remoteProviders: next }
+        }),
       setModelParams: (params) =>
         set((state) => ({ modelParams: { ...state.modelParams, ...params } })),
       setPrompts: (overrides) =>
@@ -76,7 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'speak-mentor-settings',
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         const p = persisted as Partial<SettingsState>
         // v0→v4: reset all prompts to latest defaults
@@ -102,6 +142,16 @@ export const useSettingsStore = create<SettingsState>()(
               ...params,
               timeout: params?.timeout === 300000 ? 600000 : (params?.timeout ?? 600000),
             },
+            activeProvider: 'ollama',
+            remoteProviders: {},
+          }
+        }
+        // v5→v6: introduce multi-provider fields with safe defaults
+        if (version < 6) {
+          return {
+            ...p,
+            activeProvider: p.activeProvider ?? 'ollama',
+            remoteProviders: p.remoteProviders ?? {},
           }
         }
         return p
@@ -111,6 +161,8 @@ export const useSettingsStore = create<SettingsState>()(
         return {
           ...current,
           ...p,
+          activeProvider: p.activeProvider ?? current.activeProvider,
+          remoteProviders: p.remoteProviders ?? current.remoteProviders,
           prompts: {
             ...current.prompts,
             ...(p.prompts ?? {}),

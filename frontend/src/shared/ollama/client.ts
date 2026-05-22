@@ -17,13 +17,13 @@ export type OllamaModel = {
   modified_at: string
 }
 
-function makeProvider(config: OllamaConfig, modelOverride?: string, keepAliveOverride?: number): LLMProvider {
+function makeOllamaProvider(config: OllamaConfig): LLMProvider {
   return new OllamaProvider({
     provider: 'ollama',
     url: config.url,
     port: config.port,
-    model: modelOverride ?? config.model,
-    keepAlive: keepAliveOverride ?? config.keepAlive,
+    model: config.model,
+    keepAlive: config.keepAlive,
   })
 }
 
@@ -32,22 +32,12 @@ export function getOllamaQueueLength(): number {
 }
 
 export async function fetchOllamaModels(config: OllamaConfig): Promise<OllamaModel[]> {
-  const models = await makeProvider(config).listModels()
+  const models = await makeOllamaProvider(config).listModels()
   return models.map((m) => ({
     name: m.name,
     size: m.size ?? 0,
     modified_at: m.modified_at ?? '',
   }))
-}
-
-export function callOllama(
-  config: OllamaConfig,
-  prompt: BuiltPrompt,
-  model: string,
-  keepAlive: string | number = -1,
-): Promise<string> {
-  const ka = typeof keepAlive === 'number' ? keepAlive : Number(keepAlive)
-  return makeProvider(config, model, ka).chat(prompt)
 }
 
 function resolvePositions(
@@ -79,12 +69,11 @@ function normalizeCorrectionObj(obj: Record<string, unknown>): void {
 }
 
 export async function correctText(
-  config: OllamaConfig,
+  provider: LLMProvider,
   prompt: BuiltPrompt,
-  model: string,
-  originalText: string
+  originalText: string,
 ): Promise<CorrectionResponse> {
-  let raw = await callOllama(config, prompt, model)
+  let raw = await provider.chat(prompt)
   let parsed = safeParse(raw, CorrectionResponseSchema, normalizeCorrectionObj)
 
   if (!parsed.success) {
@@ -94,7 +83,7 @@ export async function correctText(
       system: prompt.system + '\n\nPrevious output was invalid JSON. Return strict JSON matching the schema.',
       options: { ...prompt.options, temperature: 0 },
     }
-    raw = await callOllama(config, retryPrompt, model)
+    raw = await provider.chat(retryPrompt)
     parsed = safeParse(raw, CorrectionResponseSchema, normalizeCorrectionObj)
     if (!parsed.success) {
       throw new OllamaParseError(raw, parsed.error)
@@ -107,11 +96,10 @@ export async function correctText(
 }
 
 export async function translateText(
-  config: OllamaConfig,
+  provider: LLMProvider,
   prompt: BuiltPrompt,
-  model: string
 ): Promise<TranslationResponse> {
-  let raw = await callOllama(config, prompt, model)
+  let raw = await provider.chat(prompt)
   let parsed = safeParse(raw, TranslationResponseSchema)
 
   if (!parsed.success) {
@@ -120,7 +108,7 @@ export async function translateText(
       system: prompt.system + '\n\nPrevious output was invalid JSON. Return strict JSON matching the schema.',
       options: { ...prompt.options, temperature: 0 },
     }
-    raw = await callOllama(config, retryPrompt, model)
+    raw = await provider.chat(retryPrompt)
     parsed = safeParse(raw, TranslationResponseSchema)
     if (!parsed.success) {
       throw new OllamaParseError(raw, parsed.error)
@@ -149,7 +137,7 @@ export class OllamaParseError extends Error {
   zodError: z.ZodError
 
   constructor(rawOutput: string, zodError: z.ZodError) {
-    super('Ollama returned invalid JSON after 2 attempts')
+    super('LLM returned invalid JSON after 2 attempts')
     this.rawOutput = rawOutput
     this.zodError = zodError
   }

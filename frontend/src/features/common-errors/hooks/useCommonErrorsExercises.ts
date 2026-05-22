@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import { useSettingsStore } from '@/stores/settingsStore'
 import { useFaviconStore } from '@/stores/faviconStore'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
-import { callOllama } from '@/shared/ollama/client'
+import { useActiveLLMProvider } from '@/shared/llm/hooks'
+import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { CommonErrorCategory, ReferenceTable } from '../data/commonErrors'
 import type { CEFRLevel, Lang } from '@/shared/types'
 
@@ -98,11 +98,20 @@ export function useCommonErrorsExercises(
   const [result, setResult] = useState<CommonErrorsExercisesResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const { ollama } = useSettingsStore()
+  const { provider, locked } = useActiveLLMProvider()
   const faviconKey = `common-errors-${category.id}`
   const setTask = useFaviconStore((s) => s.setTask)
 
   const generate = useCallback(async () => {
+    if (!provider) {
+      setError(
+        locked
+          ? `Desbloqueá ${PROVIDER_LABELS[locked]} en Configuración → Conexión.`
+          : 'Configurá un proveedor de LLM en Configuración → Conexión.',
+      )
+      setStatus('error')
+      return
+    }
     setStatus('loading')
     setError(null)
     setTask(faviconKey, 10)
@@ -121,7 +130,7 @@ export function useCommonErrorsExercises(
       })
 
       setTask(faviconKey, 40)
-      const raw = await callOllama(ollama, prompt, ollama.model, ollama.keepAlive)
+      const raw = await provider.chat(prompt)
       setTask(faviconKey, 90)
       const parsed = JSON.parse(raw) as CommonErrorsExercisesResult
 
@@ -141,7 +150,7 @@ export function useCommonErrorsExercises(
       setStatus('error')
       setTask(faviconKey, null)
     }
-  }, [category, level, explanationLang, ollama, faviconKey, setTask])
+  }, [category, level, explanationLang, provider, locked, faviconKey, setTask])
 
   return { status, result, error, generate }
 }

@@ -4,6 +4,8 @@ import { buildPrompt } from '@/shared/ollama/promptBuilder'
 import { correctText, OllamaParseError } from '@/shared/ollama/client'
 import { saveSession } from '@/shared/api/flaskClient'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useActiveLLMProvider } from '@/shared/llm/hooks'
+import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { CEFRLevel, ErrorItem } from '@/shared/types'
 import type { CorrectionResponse } from '@/shared/ollama/schemas'
 
@@ -19,7 +21,8 @@ interface UseCorrectionReturn {
 }
 
 export function useCorrection(): UseCorrectionReturn {
-  const { ollama, modelParams, prompts, setLastCorrectionLevel } = useSettingsStore()
+  const { modelParams, prompts, setLastCorrectionLevel } = useSettingsStore()
+  const { provider, locked, config } = useActiveLLMProvider()
   const [result, setResult] = useState<CorrectionResponse | null>(null)
   const [rawError, setRawError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -27,6 +30,14 @@ export function useCorrection(): UseCorrectionReturn {
   const [savedSessionId, setSavedSessionId] = useState<number | null>(null)
 
   const correct = async (text: string, level: CEFRLevel) => {
+    if (!provider) {
+      toast.error(
+        locked
+          ? `Desbloqueá ${PROVIDER_LABELS[locked]} en Configuración → Conexión.`
+          : 'Configurá un proveedor de LLM en Configuración → Conexión.',
+      )
+      return
+    }
     setLoading(true)
     setRawError(null)
     setResult(null)
@@ -38,14 +49,14 @@ export function useCorrection(): UseCorrectionReturn {
         systemOverride: prompts.correctionSystem,
         modelParams,
       })
-      const response = await correctText(ollama, prompt, ollama.model, text)
+      const response = await correctText(provider, prompt, text)
       setResult(response)
     } catch (err) {
       if (err instanceof OllamaParseError) {
         setRawError(err.rawOutput)
         toast.error('El modelo devolvió una respuesta inválida. Ver detalle abajo.')
       } else {
-        toast.error('Error al conectar con Ollama. Verificá la configuración.')
+        toast.error('Error al conectar con el proveedor. Verificá la configuración.')
       }
     } finally {
       setLoading(false)
@@ -76,7 +87,7 @@ export function useCorrection(): UseCorrectionReturn {
         input_text: text,
         output_text: result.corrected,
         raw_llm: JSON.stringify(result),
-        model: ollama.model,
+        model: config?.model,
         errors,
       })
       setSavedSessionId(session_id)

@@ -43,3 +43,41 @@ export async function getStatsTimeline(days = 30) {
 export async function getTopRules(limit = 10) {
   return api.get('stats/top-rules', { searchParams: { limit } }).json<{ rule: string; count: number }[]>()
 }
+
+// ── LLM proxy ────────────────────────────────────────────────────────────────
+
+export type BackendProviderId = 'openai' | 'anthropic' | 'gemini'
+
+export interface BackendProviderAvailability {
+  openai: boolean
+  anthropic: boolean
+  gemini: boolean
+}
+
+export async function fetchBackendProviders(): Promise<BackendProviderAvailability> {
+  return api.get('llm/providers').json()
+}
+
+export async function fetchBackendModels(provider: BackendProviderId): Promise<{ name: string }[]> {
+  const { models } = await api
+    .get('llm/models', { searchParams: { provider } })
+    .json<{ models: { name: string }[] }>()
+  return models
+}
+
+export interface BackendChatRequest {
+  provider: BackendProviderId
+  model: string
+  system: string
+  user: string
+  options: { temperature: number; top_p: number; num_ctx: number }
+  timeout?: number
+}
+
+export async function backendChat(req: BackendChatRequest): Promise<string> {
+  const timeout = req.timeout ?? 600_000
+  const { content } = await api
+    .post('llm/chat', { json: req, timeout })
+    .json<{ content: string }>()
+  return content
+}

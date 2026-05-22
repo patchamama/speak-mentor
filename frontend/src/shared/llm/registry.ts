@@ -1,4 +1,5 @@
 import { AnthropicProvider } from './providers/anthropic'
+import { BackendProxyProvider } from './providers/backend'
 import { GeminiProvider } from './providers/gemini'
 import { OllamaProvider } from './providers/ollama'
 import type { LLMConfig, LLMProvider, LLMProviderId } from './types'
@@ -10,21 +11,30 @@ export class ProviderLockedError extends Error {
   }
 }
 
-export function buildProvider(
-  config: LLMConfig,
-  decryptedApiKey: string | undefined,
-): LLMProvider {
+export interface BuildProviderOptions {
+  /** Route through Flask `/api/llm/*` instead of calling the provider directly. */
+  useBackend?: boolean
+  /** Decrypted API key for direct browser-to-provider calls. Ignored when useBackend is true. */
+  apiKey?: string
+}
+
+export function buildProvider(config: LLMConfig, options: BuildProviderOptions = {}): LLMProvider {
+  const { useBackend = false, apiKey } = options
+
   switch (config.provider) {
     case 'ollama':
       return new OllamaProvider(config)
-    case 'anthropic':
-      if (!decryptedApiKey) throw new ProviderLockedError('anthropic')
-      return new AnthropicProvider(config, decryptedApiKey)
-    case 'gemini':
-      if (!decryptedApiKey) throw new ProviderLockedError('gemini')
-      return new GeminiProvider(config, decryptedApiKey)
     case 'openai':
-      throw new Error('OpenAI provider not yet available — requires backend proxy (PR 3)')
+      // OpenAI never works direct from browser (CORS). Always proxied.
+      return new BackendProxyProvider('openai', config.model)
+    case 'anthropic':
+      if (useBackend) return new BackendProxyProvider('anthropic', config.model)
+      if (!apiKey) throw new ProviderLockedError('anthropic')
+      return new AnthropicProvider(config, apiKey)
+    case 'gemini':
+      if (useBackend) return new BackendProxyProvider('gemini', config.model)
+      if (!apiKey) throw new ProviderLockedError('gemini')
+      return new GeminiProvider(config, apiKey)
   }
 }
 

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useSettingsStore, DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
 import { Button } from '@/shared/ui/Button'
 import { OllamaConnectionForm } from './components/OllamaConnectionForm'
+import { OpenAIPanel } from './components/OpenAIPanel'
 import { RemoteProviderPanel } from './components/RemoteProviderPanel'
 import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { LLMProviderId } from '@/shared/llm/types'
@@ -144,11 +145,11 @@ export function SettingsView() {
               <option value="ollama">{PROVIDER_LABELS.ollama}</option>
               <option value="anthropic">{PROVIDER_LABELS.anthropic}</option>
               <option value="gemini">{PROVIDER_LABELS.gemini}</option>
-              <option value="openai" disabled>{PROVIDER_LABELS.openai} (requiere backend — próximo PR)</option>
+              <option value="openai">{PROVIDER_LABELS.openai}</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Ollama corre localmente sin credenciales. Los proveedores remotos requieren API key
-              y una contraseña maestra para cifrarla.
+              Ollama corre localmente sin credenciales. Anthropic y Gemini cifran tu API key con
+              una contraseña maestra. OpenAI requiere que la key viva en el backend.
             </p>
           </div>
 
@@ -159,6 +160,7 @@ export function SettingsView() {
           {activeProvider === 'gemini' && (
             <RemoteProviderPanel providerId="gemini" label={PROVIDER_LABELS.gemini} />
           )}
+          {activeProvider === 'openai' && <OpenAIPanel />}
         </div>
       )}
 

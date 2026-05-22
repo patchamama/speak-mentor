@@ -114,7 +114,7 @@ function FirstTimeSetup({
     try {
       // Verify the key reaches the provider before persisting anything
       const tempConfig = buildRemoteConfig(providerId, model || 'default', undefined)
-      const provider = buildProvider(tempConfig, apiKey.trim())
+      const provider = buildProvider(tempConfig, { apiKey: apiKey.trim() })
       const models = await provider.listModels()
       const resolvedModel = model.trim() || models[0]?.name || ''
       if (!resolvedModel) throw new Error('No se encontró ningún modelo disponible')
@@ -224,13 +224,17 @@ function UnlockPanel({
   const [error, setError] = useState<string | null>(null)
 
   const handleUnlock = async () => {
+    if (!entry.encryptedApiKey) {
+      setError('No hay key cifrada para desbloquear')
+      return
+    }
     setError(null)
     setBusy(true)
     try {
       const decrypted = await decryptSecret(entry.encryptedApiKey, password)
       // Smoke-test that the key + provider are still valid
       const tempConfig = buildRemoteConfig(providerId, entry.model, entry.baseUrl)
-      const provider = buildProvider(tempConfig, decrypted)
+      const provider = buildProvider(tempConfig, { apiKey: decrypted })
       await provider.listModels()
       onUnlocked(decrypted)
     } catch (err) {
@@ -318,7 +322,7 @@ function UnlockedPanel({
     setModelsError(null)
     try {
       const config = buildRemoteConfig(providerId, currentModel, baseUrl)
-      const provider = buildProvider(config, decryptedKey)
+      const provider = buildProvider(config, { apiKey: decryptedKey })
       const list = await provider.listModels()
       setModels(list)
     } catch (err) {

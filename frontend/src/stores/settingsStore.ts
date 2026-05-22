@@ -12,9 +12,15 @@ import type { EncryptedSecret } from '@/shared/crypto/secret'
 export type RemoteProviderId = Exclude<LLMProviderId, 'ollama'>
 
 export interface RemoteProviderEntry {
-  encryptedApiKey: EncryptedSecret
+  // Encrypted local key (PBKDF2 + AES-GCM). Optional when useBackend is true —
+  // OpenAI always uses backend, so no envelope is stored.
+  encryptedApiKey?: EncryptedSecret
   model: string
   baseUrl?: string
+  // When true, requests go through the Flask /api/llm/* proxy with a server-
+  // side key from env vars. Forced true for OpenAI (CORS blocks direct browser
+  // calls). Optional for Anthropic/Gemini.
+  useBackend?: boolean
 }
 
 export type RemoteProvidersMap = Partial<Record<RemoteProviderId, RemoteProviderEntry>>

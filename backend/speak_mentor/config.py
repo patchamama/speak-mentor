@@ -11,3 +11,10 @@ class Config:
     CORS_ORIGINS = os.environ.get(
         'CORS_ORIGINS', 'http://localhost:5173,http://localhost:5174'
     ).split(',')
+
+    # LLM provider API keys (server-side proxy mode)
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+    LLM_PROXY_TIMEOUT = int(os.environ.get('LLM_PROXY_TIMEOUT', '600'))

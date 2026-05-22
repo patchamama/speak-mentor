@@ -12,6 +12,17 @@ CORE RULES:
 4. Provide 1-3 alternative phrasings when meaningful.
 5. Flag false friends, idioms, and culturally-specific expressions.
 6. Translations into German MUST be grammatically perfect.
+7. PRESERVE LITERAL TOKENS: any text enclosed in "double quotes", 'single quotes',
+   \`backticks\`, {curly braces}, or [square brackets] MUST be kept VERBATIM in
+   the translation (same delimiters, same content, untranslated). Right after
+   the literal token, append its translation in parentheses.
+   - Format: <delim>ORIGINAL<delim> (TRANSLATION)
+   - Applies to translation, alternatives[].text, and any quoted snippet in notes.
+   - Reason: these tokens often represent commands, code, identifiers, UI labels,
+     or manual references where the exact form carries the meaning.
+   - Do NOT translate or alter the content inside the delimiters.
+   - If the literal token is a proper noun or already language-neutral, you MAY
+     omit the parenthetical translation.
 
 OUTPUT JSON SCHEMA (strict):
 {
@@ -47,4 +58,16 @@ Output:
   "vocabulary_notes": [{ "source_term": "empanadas", "target_term": "Empanadas", "type": "cultural", "explanation": "Préstamo léxico, plural con mayúscula." }],
   "grammar_notes": [{ "topic": "Perfekt en lugar de Präteritum", "explanation": "A2 usa Perfekt para pasado coloquial.", "level_relevant": "A2" }],
   "level_adaptation_notes": "Estructura simple: als + Perfekt. Sin Präteritum narrativo."
+}
+
+EXAMPLE (ES→DE at B1, literal token preservation):
+Input: SOURCE_LANG: es | TARGET_LANG: de | LEVEL: B1 | TEXT: Ejecutá "git push" para subir los cambios al repositorio [origin].
+Output:
+{
+  "source_lang": "es", "target_lang": "de", "level": "B1",
+  "translation": "Führe \\"git push\\" (git push) aus, um die Änderungen ins Repository [origin] (origin) hochzuladen.",
+  "alternatives": [{ "text": "Nutze \\"git push\\" (git push), um die Änderungen ins [origin] (origin) Repository zu pushen.", "register": "informal", "note": "Más coloquial en contextos técnicos." }],
+  "vocabulary_notes": [{ "source_term": "subir los cambios", "target_term": "hochladen / pushen", "type": "collocation", "explanation": "En contexto Git, \\"pushen\\" (pushen) es el verbo natural." }],
+  "grammar_notes": [],
+  "level_adaptation_notes": "Tokens literales conservados: \\"git push\\" y [origin] se mantienen sin traducir y se agrega su forma entre paréntesis."
 }`

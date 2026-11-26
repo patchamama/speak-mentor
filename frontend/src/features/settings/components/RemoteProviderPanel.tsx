@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useUnlockStore } from '@/stores/unlockStore'
-import { DecryptError, type EncryptedSecret } from '@/shared/crypto/secret'
-import { sealSecret, unlockVault } from '@/shared/crypto/vault'
-import { LockedSecret, NewSecretPassword } from '@/components/MasterPassword'
-import { useNewSecretPasswordReady } from '@/components/secretHooks'
+import type { EncryptedSecret } from '@/shared/crypto/secret'
+import { sealSecret } from '@/shared/crypto/vault'
+import { LockedSecret, VaultRequiredHint } from '@/components/MasterPassword'
+import { useVaultOpen } from '@/components/secretHooks'
 import { buildProvider } from '@/shared/llm/registry'
 import { DEFAULT_MODELS } from '@/shared/llm/defaults'
 import type { LLMConfig, LLMModel } from '@/shared/llm/types'
@@ -108,39 +108,30 @@ function FirstTimeSetup({
   onSaved: (payload: FirstTimePayload) => void
 }) {
   const [apiKey, setApiKey] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const passwordReady = useNewSecretPasswordReady(password, confirm)
-  const [model, setModel] = useState('')
+  const vaultOpen = useVaultOpen()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canSubmit = apiKey.trim() && passwordReady
+  const canSubmit = Boolean(apiKey.trim()) && vaultOpen
 
   const handleSubmit = async () => {
     setError(null)
     setBusy(true)
     try {
       // Verify the key reaches the provider before persisting anything
-      const tempConfig = buildRemoteConfig(providerId, model || 'default', undefined)
+      const tempConfig = buildRemoteConfig(providerId, 'default', undefined)
       const provider = buildProvider(tempConfig, { apiKey: apiKey.trim() })
       const models = await provider.listModels()
       const preferred = models.find((m) => m.name === DEFAULT_MODELS[providerId])?.name
-      const resolvedModel = model.trim() || preferred || models[0]?.name || ''
+      const resolvedModel = preferred || models[0]?.name || ''
       if (!resolvedModel) throw new Error('No se encontró ningún modelo disponible')
 
-      // Opens the other stored secrets too, and rejects a password that opens none.
-      if (!useUnlockStore.getState().masterPassword) await unlockVault(password)
       const encryptedApiKey = await sealSecret(apiKey.trim())
       onSaved({
         entry: { encryptedApiKey, model: resolvedModel },
         apiKey: apiKey.trim(),
       })
     } catch (err) {
-      if (err instanceof DecryptError) {
-        setError('La contraseña maestra no abre las claves ya guardadas.')
-        return
-      }
       const msg =
         err instanceof Error && err.message ? err.message : 'Error verificando la API key'
       setError(msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')
@@ -156,8 +147,7 @@ function FirstTimeSetup({
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs space-y-1">
         <p className="font-semibold">Configurar {label}</p>
         <p className="text-muted-foreground">
-          La API key se cifra con tu contraseña maestra (PBKDF2-SHA256 + AES-GCM) antes de
-          guardarse en localStorage. La contraseña vive solo en memoria — se pierde al cerrar la pestaña.
+          La API key se cifra con tu clave maestra. Al conectar se cargan los modelos disponibles.
         </p>
       </div>
 
@@ -173,28 +163,12 @@ function FirstTimeSetup({
         />
       </Field>
 
-      <NewSecretPassword
-        password={password}
-        confirm={confirm}
-        onPassword={setPassword}
-        onConfirm={setConfirm}
-      />
-
-      <Field label="Modelo (opcional — se autodetecta si lo dejás vacío)" htmlFor={`${providerId}-model`}>
-        <input
-          id={`${providerId}-model`}
-          type="text"
-          className={inputClass}
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder={DEFAULT_MODELS[providerId]}
-        />
-      </Field>
+      <VaultRequiredHint />
 
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={!canSubmit || busy}>
           {busy ? <Spinner className="mr-2" /> : null}
-          Guardar y verificar
+          Conectar y cargar modelos
         </Button>
       </div>
 
@@ -297,7 +271,7 @@ function UnlockedPanel({
           </select>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Cargando modelos…
+            {loadingModels ? 'Cargando modelos…' : 'Sin modelos cargados. Usa "Recargar modelos".'}
           </p>
         )}
 

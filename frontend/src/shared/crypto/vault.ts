@@ -49,7 +49,7 @@ export async function unlockVault(password: string): Promise<{ failed: SecretId[
 
 export async function sealSecret(plaintext: string): Promise<EncryptedSecret> {
   const password = useUnlockStore.getState().masterPassword
-  if (!password) throw new Error('Introduce primero la contraseña maestra.')
+  if (!password) throw new Error('Introduce primero la clave maestra.')
   return encryptSecret(plaintext, password)
 }
 

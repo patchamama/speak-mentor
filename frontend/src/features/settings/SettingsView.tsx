@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useSettingsStore, DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
@@ -6,16 +6,15 @@ import { Button } from '@/shared/ui/Button'
 import { OllamaConnectionForm } from './components/OllamaConnectionForm'
 import { RemoteProviderSection } from './components/RemoteProviderSection'
 import { StorageSettings } from './components/StorageSettings'
-import { VaultStatus } from '@/components/MasterPassword'
+import { MasterPasswordSection } from '@/components/MasterPassword'
 import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { LLMProviderId } from '@/shared/llm/types'
 import type { ModelParams, CorrectionPassId } from '@/shared/types'
 
-type SettingsTab = 'connection' | 'storage' | 'params' | 'pipeline' | 'prompts' | 'terminal'
+type SettingsTab = 'connection' | 'params' | 'pipeline' | 'prompts' | 'terminal'
 
 const TAB_LABELS: Record<SettingsTab, string> = {
-  connection: 'Conexión',
-  storage: 'Almacenamiento',
+  connection: 'Conexión y almacenamiento',
   params: 'Parámetros',
   pipeline: 'Pipeline',
   prompts: 'Prompts',
@@ -40,12 +39,16 @@ const PASS_INFO: Record<CorrectionPassId, { label: string; description: string }
 const inputClass =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-export function SettingsView() {
+export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: number }) {
   const { modelParams, setModelParams, prompts, setPrompts, resetPrompts, pipeline, setPipeline } =
     useSettingsStore()
   const activeProvider = useSettingsStore((s) => s.activeProvider)
   const setActiveProvider = useSettingsStore((s) => s.setActiveProvider)
   const [tab, setTab] = useState<SettingsTab>('connection')
+
+  useEffect(() => {
+    if (connectionRequest > 0) setTab('connection')
+  }, [connectionRequest])
 
   // ── Params form ────────────────────────────────────────────────────────────
   const { register: regParams, handleSubmit: handleParams } = useForm<ModelParams>({
@@ -115,8 +118,6 @@ export function SettingsView() {
     <div className="max-w-2xl space-y-6">
       <h2 className="text-lg font-semibold">Configuración</h2>
 
-      <VaultStatus />
-
       {/* Tab selector */}
       <div className="flex gap-1 border-b pb-0">
         {(Object.keys(TAB_LABELS) as SettingsTab[]).map((t) => (
@@ -138,6 +139,9 @@ export function SettingsView() {
       {/* ── Connection ──────────────────────────────────────────────────────── */}
       {tab === 'connection' && (
         <div className="space-y-5">
+          <MasterPasswordSection />
+
+          <h3 className="text-sm font-semibold">Modelo de IA</h3>
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="provider-select">Proveedor</label>
             <select
@@ -153,7 +157,7 @@ export function SettingsView() {
             </select>
             <p className="text-xs text-muted-foreground">
               Ollama corre localmente sin credenciales. Anthropic, Gemini y OpenAI funcionan directo
-              desde el navegador (la API key se cifra con una contraseña maestra) o con el modelo del
+              desde el navegador (la API key se cifra con la clave maestra) o con el modelo del
               backend.
             </p>
           </div>
@@ -166,10 +170,13 @@ export function SettingsView() {
               label={PROVIDER_LABELS[activeProvider]}
             />
           )}
+
+          <div className="border-t pt-5 space-y-3">
+            <h3 className="text-sm font-semibold">Almacenamiento</h3>
+            <StorageSettings />
+          </div>
         </div>
       )}
-
-      {tab === 'storage' && <StorageSettings />}
 
       {/* ── Model params ────────────────────────────────────────────────────── */}
       {tab === 'params' && (

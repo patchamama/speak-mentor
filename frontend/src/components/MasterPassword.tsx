@@ -59,54 +59,97 @@ function PasswordForm({
   )
 }
 
-/** Shown app-wide while there are stored secrets and the vault is locked. */
-export function MasterPasswordBanner() {
-  const locked = useUnlockStore((s) => s.masterPassword === null)
+/** The only place where the master password is typed. */
+export function MasterPasswordSection() {
+  const unlocked = useUnlockStore((s) => s.masterPassword !== null)
+  const lock = useUnlockStore((s) => s.lock)
   const hasSecrets = useHasStoredSecrets()
-  if (!locked || !hasSecrets) return null
 
   return (
-    <section aria-label="Desbloquear claves" className="rounded-lg border border-primary/30 bg-primary/5 p-4 mb-6">
-      <PasswordForm
-        label="Contraseña maestra: desbloquea tus API keys y tu token de GitHub"
-        submitLabel="Desbloquear"
-        onSubmit={async (password) => {
-          const { failed } = await unlockVault(password)
-          void refreshHistory()
-          if (failed.length > 0) {
-            toast.warning(`Usan otra contraseña: ${failed.join(', ')}. Revísalo en Configuración.`)
-          } else {
-            toast.success('Claves desbloqueadas')
-          }
-        }}
-      />
+    <section aria-label="Clave maestra" className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+      <h3 className="text-sm font-semibold">Clave maestra</h3>
+      <p className="text-xs text-muted-foreground">
+        Cifra tus API keys y tu token de GitHub en este navegador. Nunca se guarda: se pierde al
+        cerrar o recargar la pestaña. Ollama y el modelo del backend no la necesitan.
+      </p>
+      {unlocked ? (
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <p>🔓 Claves desbloqueadas</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              lock()
+              void refreshHistory()
+            }}
+          >
+            Bloquear todo
+          </Button>
+        </div>
+      ) : hasSecrets ? (
+        <UnlockForm />
+      ) : (
+        <CreateForm />
+      )}
     </section>
   )
 }
 
-export function VaultStatus() {
-  const unlocked = useUnlockStore((s) => s.masterPassword !== null)
-  const lock = useUnlockStore((s) => s.lock)
-  if (!unlocked) return null
+function UnlockForm() {
+  return (
+    <PasswordForm
+      label="Clave maestra"
+      submitLabel="Desbloquear"
+      onSubmit={async (password) => {
+        const { failed } = await unlockVault(password)
+        void refreshHistory()
+        if (failed.length > 0) {
+          toast.warning(`Usan otra contraseña: ${failed.join(', ')}.`)
+        } else {
+          toast.success('Claves desbloqueadas')
+        }
+      }}
+    />
+  )
+}
+
+/** First use: confirmed twice, because a typo here cannot be recovered. */
+function CreateForm() {
+  const id = useId()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const valid = password.length >= MIN_PASSWORD_LENGTH && password === confirm
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-xs">
-      <p>
-        🔓 Claves desbloqueadas. La contraseña maestra está solo en memoria y se pierde al cerrar o
-        recargar la pestaña.
-      </p>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          lock()
-          void refreshHistory()
-        }}
-      >
-        Bloquear todo
-      </Button>
-    </div>
+    <form
+      className="space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (valid) void unlockVault(password)
+      }}
+    >
+      {[
+        { key: 'new', label: `Clave maestra (mín ${MIN_PASSWORD_LENGTH} caracteres)`, value: password, set: setPassword },
+        { key: 'confirm', label: 'Repetir la clave', value: confirm, set: setConfirm },
+      ].map((field) => (
+        <div key={field.key} className="space-y-1">
+          <label className="block text-sm font-medium" htmlFor={`${id}-${field.key}`}>{field.label}</label>
+          <input
+            id={`${id}-${field.key}`}
+            type="password"
+            autoComplete="new-password"
+            className={passwordInputClass}
+            value={field.value}
+            onChange={(e) => field.set(e.target.value)}
+          />
+        </div>
+      ))}
+      {confirm && confirm !== password && (
+        <p className="text-xs text-destructive">Las claves no coinciden</p>
+      )}
+      <Button type="submit" disabled={!valid}>Activar clave maestra</Button>
+    </form>
   )
 }
 
@@ -139,7 +182,7 @@ export function LockedSecret({
         </>
       ) : (
         <p className="text-muted-foreground">
-          Introduce la contraseña maestra en la barra superior.
+          Introduce la clave maestra arriba.
         </p>
       )}
       <Button type="button" size="sm" variant="outline" onClick={onForget}>
@@ -149,50 +192,9 @@ export function LockedSecret({
   )
 }
 
-/** Password fields for a setup form; nothing to ask once the vault is open. */
-export function NewSecretPassword({
-  password,
-  confirm,
-  onPassword,
-  onConfirm,
-}: {
-  password: string
-  confirm: string
-  onPassword: (value: string) => void
-  onConfirm: (value: string) => void
-}) {
-  const id = useId()
+/** Hint for setup forms, which stay disabled until the vault is open. */
+export function VaultRequiredHint() {
   const unlocked = useUnlockStore((s) => s.masterPassword !== null)
-  const hasSecrets = useHasStoredSecrets()
-  if (unlocked) {
-    return <p className="text-xs text-muted-foreground">Se cifrará con tu contraseña maestra.</p>
-  }
-
-  const fields = [
-    { key: 'password', label: `Contraseña maestra (mín ${MIN_PASSWORD_LENGTH} caracteres)`, value: password, set: onPassword },
-    ...(hasSecrets
-      ? []
-      : [{ key: 'confirm', label: 'Confirmar contraseña', value: confirm, set: onConfirm }]),
-  ]
-
-  return (
-    <>
-      {fields.map((field) => (
-        <div key={field.key} className="space-y-1">
-          <label className="text-sm font-medium" htmlFor={`${id}-${field.key}`}>{field.label}</label>
-          <input
-            id={`${id}-${field.key}`}
-            type="password"
-            autoComplete="new-password"
-            className={passwordInputClass}
-            value={field.value}
-            onChange={(e) => field.set(e.target.value)}
-          />
-        </div>
-      ))}
-      {!hasSecrets && confirm && confirm !== password && (
-        <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-      )}
-    </>
-  )
+  if (unlocked) return null
+  return <p className="text-xs text-muted-foreground">Primero activa o introduce la clave maestra arriba.</p>
 }

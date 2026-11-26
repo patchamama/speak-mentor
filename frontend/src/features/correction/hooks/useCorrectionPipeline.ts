@@ -211,8 +211,8 @@ export function useCorrectionPipeline() {
       if (!provider) {
         toast.error(
           locked
-            ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la contraseña maestra o revisa Configuración → Conexión.`
-            : 'Configurá un proveedor de LLM en Configuración → Conexión.',
+            ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.`
+            : 'Configurá un proveedor de LLM en Configuración → Conexión y almacenamiento.',
         )
         return
       }

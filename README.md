@@ -213,19 +213,22 @@ SQLite database is created automatically at `backend/instance/speak_mentor.db` o
 
 ### 6. Configure a remote provider (optional)
 
-Open **Settings → Conexión** and pick a proveedor.
+Open **Settings → Conexión y almacenamiento**, set the master password (section 8) and pick a provider.
 
 **Direct mode (Anthropic, Gemini, OpenAI — default):**
-1. Paste your API key into the form.
-2. Pick a master password (min 6 chars) and confirm.
-3. Click **Guardar y verificar** — the app encrypts the key, calls `listModels()` to verify it works, and stores the encrypted envelope in `localStorage`.
-4. On the next session, enter the master password in the top bar to unlock every stored key.
+1. Paste your API key.
+2. Click **Conectar y cargar modelos**: the key is verified, encrypted and stored, and the available models appear in a list.
+3. Pick a model. On the next session, unlock with the master password to load the list again.
+
+Ollama lists its installed models automatically.
 
 **Backend model (optional):** set the provider key in the backend environment, restart Flask, then choose **Origen del modelo → Modelo del backend**. No local key is needed.
 
 ### 7. Storage without a backend
 
-**Settings → Almacenamiento** selects where history is saved. **Automático** uses the Flask backend when it responds, otherwise GitHub when configured, otherwise this browser. Each target keeps its own history; switching does not migrate data.
+**Settings → Conexión y almacenamiento** also selects where history is saved. **Automático** uses the Flask backend when it responds, otherwise GitHub when configured, otherwise this browser. Each target keeps its own history; switching does not migrate data.
+
+**Change token** is always available in the GitHub section, also when the connection fails or the vault is locked; the current token is kept until the new one works.
 
 **GitHub storage:** enter a token and, optionally, your user name or profile URL. The app uses the repository **`speak-mentor-data`** and creates it as **private** when it does not exist. Sessions, errors and generated vocabulary and exercises are committed to `data/speak-mentor.json` on its default branch.
 
@@ -238,7 +241,7 @@ The broader token can reach all your repositories: once the repository exists, c
 
 ### 8. Master password
 
-One master password encrypts the LLM API keys and the GitHub token in `localStorage`. Enter it once in the top bar to unlock all of them. It is **never stored**: it stays in memory until you reload, close the tab or press **Bloquear todo**.
+One master password encrypts the LLM API keys and the GitHub token in `localStorage`. It is typed in a single place, at the top of **Settings → Conexión y almacenamiento**, and unlocks all of them; the header shows a shortcut while they are locked. It is **never stored**: it stays in memory until you reload, close the tab or press **Bloquear todo**.
 
 - There is no recovery. If you forget it, forget the stored keys and enter them again.
 - Secrets saved with a different password in 0.2.0 can be migrated from Settings.

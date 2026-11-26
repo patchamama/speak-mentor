@@ -7,7 +7,7 @@ import { HistoryContainer } from './features/history/HistoryContainer'
 import { SettingsContainer } from './features/settings/SettingsContainer'
 import { CommonErrorsView } from './features/common-errors/CommonErrorsView'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { MasterPasswordBanner } from './components/MasterPassword'
+import { useHasStoredSecrets, useVaultOpen } from './components/secretHooks'
 import { useThemeStore } from './stores/themeStore'
 import { useFaviconRenderer } from './shared/hooks/useFaviconProgress'
 import { useOllamaStartup, type OllamaStatus } from './shared/hooks/useOllamaStartup'
@@ -45,6 +45,9 @@ export default function App() {
   const ollamaBusy = useOllamaActivityStore((s) => s.busy)
   const backendFetching = useIsFetching() > 0
   const storage = useStorageTarget()
+  const hasSecrets = useHasStoredSecrets()
+  const vaultOpen = useVaultOpen()
+  const [connectionRequest, setConnectionRequest] = useState(0)
 
   const ollamaDot = ollamaBusy && ollamaStatus === 'connected'
     ? { color: 'bg-green-400 animate-pulse', label: 'Ollama: procesando…' }
@@ -92,6 +95,18 @@ export default function App() {
             aria-label={ollamaDot.label}
             className={cn('h-2 w-2 rounded-full inline-block', ollamaDot.color)}
           />
+          {hasSecrets && !vaultOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                setPage('settings')
+                setConnectionRequest((n) => n + 1)
+              }}
+              className="text-xs rounded-md border border-primary/40 px-2 py-1 hover:bg-muted"
+            >
+              🔒 Desbloquear claves
+            </button>
+          )}
           <span className="text-xs text-muted-foreground">
             Datos: {STORAGE_LABELS[storage.target]}{storage.locked ? ' 🔒' : ''}
           </span>
@@ -100,12 +115,11 @@ export default function App() {
       </header>
       <main className="container mx-auto px-6 py-8 max-w-5xl">
         <ErrorBoundary>
-          <MasterPasswordBanner />
           <div hidden={page !== 'correction'}><CorrectionContainer /></div>
           <div hidden={page !== 'translation'}><TranslationContainer /></div>
           <div hidden={page !== 'stats'}><HistoryContainer /></div>
           <div hidden={page !== 'common-errors'}><CommonErrorsView /></div>
-          <div hidden={page !== 'settings'}><SettingsContainer /></div>
+          <div hidden={page !== 'settings'}><SettingsContainer connectionRequest={connectionRequest} /></div>
         </ErrorBoundary>
       </main>
       <Toaster />

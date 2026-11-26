@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchOllamaModels, type OllamaModel } from '@/shared/ollama/client'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -29,6 +29,12 @@ export function useOllamaModels(): UseOllamaModelsReturn {
       setLoading(false)
     }
   }
+
+  // List models as soon as the screen loads or the server address changes.
+  useEffect(() => {
+    void testConnection()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.url, config.port])
 
   return { models, loading, error, testConnection }
 }

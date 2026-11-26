@@ -2,10 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
-import { DecryptError } from '@/shared/crypto/secret'
-import { sealSecret, unlockVault } from '@/shared/crypto/vault'
-import { LockedSecret, NewSecretPassword } from '@/components/MasterPassword'
-import { useNewSecretPasswordReady } from '@/components/secretHooks'
+import { sealSecret } from '@/shared/crypto/vault'
+import { LockedSecret, VaultRequiredHint } from '@/components/MasterPassword'
+import { useVaultOpen } from '@/components/secretHooks'
 import { DATA_REPO, ensureDataRepo } from '@/shared/storage/github'
 import { STORAGE_LABELS, type StorageMode } from '@/shared/storage/resolve'
 import { refreshHistory } from '@/shared/storage'
@@ -28,8 +27,17 @@ export function StorageSettings() {
   const unlocked = useUnlockStore((s) => s.githubToken !== null)
   const setToken = useUnlockStore((s) => s.setGitHubToken)
   const { target, locked } = useStorageTarget()
+  const [changingToken, setChangingToken] = useState(false)
+
+  const connect = (settings: GitHubStorageSettings, token: string) => {
+    setToken(token)
+    setGitHub(settings)
+    setChangingToken(false)
+    void refreshHistory()
+  }
 
   const forget = () => {
+    setChangingToken(false)
     setToken(null)
     setGitHub(null)
     void refreshHistory()
@@ -62,22 +70,35 @@ export function StorageSettings() {
       </div>
 
       {!github ? (
-        <GitHubSetup
-          onSaved={(settings, token) => {
-            setToken(token)
-            setGitHub(settings)
-            void refreshHistory()
-          }}
-        />
+        <GitHubSetup onSaved={connect} />
       ) : (
         <div className="space-y-3 rounded-lg border p-4">
           <p className="text-sm font-medium">
             {github.owner}/{github.repo} · {github.branch} · {github.path}
           </p>
-          {unlocked ? (
-            <Button type="button" variant="outline" onClick={forget}>Olvidar token</Button>
-          ) : (
+          {!unlocked && (
             <LockedSecret id="github" name="Token de GitHub" onForget={forget} />
+          )}
+          <p className="text-xs text-muted-foreground">
+            Si la conexión falla (token vencido, revocado o sin permisos), cambia el token. El
+            actual se conserva hasta que el nuevo funcione.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {!changingToken && (
+              <Button type="button" variant="outline" onClick={() => setChangingToken(true)}>
+                Cambiar token
+              </Button>
+            )}
+            {unlocked && (
+              <Button type="button" variant="outline" onClick={forget}>Olvidar token</Button>
+            )}
+          </div>
+          {changingToken && (
+            <GitHubSetup
+              initialUser={github.owner}
+              onSaved={connect}
+              onCancel={() => setChangingToken(false)}
+            />
           )}
         </div>
       )}
@@ -86,19 +107,21 @@ export function StorageSettings() {
 }
 
 function GitHubSetup({
+  initialUser = '',
   onSaved,
+  onCancel,
 }: {
+  initialUser?: string
   onSaved: (settings: GitHubStorageSettings, token: string) => void
+  onCancel?: () => void
 }) {
-  const [user, setUser] = useState('')
+  const [user, setUser] = useState(initialUser)
   const [token, setTokenDraft] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [publicRepo, setPublicRepo] = useState(false)
   const [acceptPublic, setAcceptPublic] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const passwordReady = useNewSecretPasswordReady(password, confirm)
+  const vaultOpen = useVaultOpen()
 
   const resetWarning = () => {
     setPublicRepo(false)
@@ -110,8 +133,6 @@ function GitHubSetup({
     setBusy(true)
     setError(null)
     try {
-      // Open the vault first, so a wrong password never leaves a half-done setup.
-      if (!useUnlockStore.getState().masterPassword) await unlockVault(password)
       const repo = await ensureDataRepo(token.trim(), user)
       if (!repo.isPrivate && !acceptPublic) {
         setPublicRepo(true)
@@ -125,11 +146,7 @@ function GitHubSetup({
           : `Usando ${repo.config.owner}/${repo.config.repo}`,
       )
     } catch (err) {
-      if (err instanceof DecryptError) {
-        setError('La contraseña maestra no abre las claves ya guardadas.')
-      } else {
-        setError(err instanceof Error ? err.message : 'No se pudo preparar el repositorio')
-      }
+      setError(err instanceof Error ? err.message : 'No se pudo preparar el repositorio')
     } finally {
       setBusy(false)
     }
@@ -137,7 +154,7 @@ function GitHubSetup({
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-lg border p-4">
-      <p className="text-sm font-medium">Guardar en tu GitHub</p>
+      <p className="text-sm font-medium">{onCancel ? 'Nuevo token de GitHub' : 'Guardar en tu GitHub'}</p>
       <p className="text-xs text-muted-foreground">
         Se usa el repositorio <strong>{DATA_REPO}</strong>; si no existe, se crea como privado.
         Para crearlo, el token necesita ser clásico con el scope <code>repo</code>, o fine-grained
@@ -177,12 +194,7 @@ function GitHubSetup({
         />
       </div>
 
-      <NewSecretPassword
-        password={password}
-        confirm={confirm}
-        onPassword={setPassword}
-        onConfirm={setConfirm}
-      />
+      <VaultRequiredHint />
 
       {publicRepo && (
         <label role="alert" className="flex items-start gap-2 text-xs text-destructive">
@@ -196,10 +208,15 @@ function GitHubSetup({
         </label>
       )}
 
-      <Button type="submit" disabled={!token.trim() || !passwordReady || busy}>
-        {busy ? <Spinner className="mr-2" /> : null}
-        Conectar GitHub
-      </Button>
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={!token.trim() || !vaultOpen || busy}>
+          {busy ? <Spinner className="mr-2" /> : null}
+          Conectar GitHub
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+        )}
+      </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </form>
   )

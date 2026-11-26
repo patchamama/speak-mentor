@@ -28,7 +28,10 @@ export function OllamaConnectionForm() {
   useEffect(() => {
     if (models.length === 0) return
     const currentIsListed = models.some((m) => m.name === ollama.model)
-    if (!currentIsListed) setValue('model', DEFAULT_MODEL)
+    if (!currentIsListed) {
+      const preferred = models.find((m) => m.name === DEFAULT_MODEL) ?? models[0]
+      setValue('model', preferred.name)
+    }
   }, [models, ollama.model, setValue])
 
   const onSubmit = (data: OllamaConfig) => {

@@ -22,12 +22,12 @@ useUnlockStore.subscribe((state) => {
 function githubStore(): SessionStore {
   const settings = useStorageStore.getState().github
   if (!settings) {
-    throw new Error('Configura GitHub en Configuración → Almacenamiento.')
+    throw new Error('Configura GitHub en Configuración → Conexión y almacenamiento.')
   }
   const token = useUnlockStore.getState().githubToken
   // Never fall back to another target here: that would split the history.
   if (!token) {
-    throw new Error('Introduce la contraseña maestra para desbloquear el token de GitHub.')
+    throw new Error('Introduce la clave maestra en Configuración → Conexión y almacenamiento.')
   }
   const { owner, repo, branch, path } = settings
   const key = JSON.stringify([owner, repo, branch, path, token])

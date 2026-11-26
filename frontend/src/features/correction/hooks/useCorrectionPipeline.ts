@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -211,8 +212,8 @@ export function useCorrectionPipeline() {
       if (!provider) {
         toast.error(
           locked
-            ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.`
-            : 'Configurá un proveedor de LLM en Configuración → Conexión y almacenamiento.',
+            ? t('{name} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.', { name: PROVIDER_LABELS[locked] })
+            : t('Configura un proveedor de LLM en Configuración → Conexión y almacenamiento.'),
         )
         return
       }

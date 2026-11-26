@@ -1,3 +1,4 @@
+import { getLanguage, t } from '@/i18n'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
@@ -33,8 +34,8 @@ export function useTranslation(): UseTranslationReturn {
     if (!provider) {
       toast.error(
         locked
-          ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.`
-          : 'Configurá un proveedor de LLM en Configuración → Conexión y almacenamiento.',
+          ? t('{name} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.', { name: PROVIDER_LABELS[locked] })
+          : t('Configura un proveedor de LLM en Configuración → Conexión y almacenamiento.'),
       )
       return
     }
@@ -47,6 +48,7 @@ export function useTranslation(): UseTranslationReturn {
       const prompt = buildPrompt({
         mode: 'translation', text, sourceLang, targetLang, level,
         systemOverride: prompts.translationSystem,
+        explanationLang: getLanguage(),
         modelParams,
       })
       const response = await translateText(provider, prompt)
@@ -54,9 +56,9 @@ export function useTranslation(): UseTranslationReturn {
     } catch (err) {
       if (err instanceof OllamaParseError) {
         setRawError(err.rawOutput)
-        toast.error('El modelo devolvió una respuesta inválida.')
+        toast.error(t('El modelo devolvió una respuesta inválida.'))
       } else {
-        toast.error('Error al conectar con el proveedor. Verificá la configuración.')
+        toast.error(t('Error al conectar con el proveedor. Revisa la configuración.'))
       }
     } finally {
       setLoading(false)
@@ -79,9 +81,9 @@ export function useTranslation(): UseTranslationReturn {
         errors: [],
       })
       setSavedSessionId(session_id)
-      toast.success('Sesión guardada')
+      toast.success(t('Sesión guardada'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al guardar la sesión')
+      toast.error(err instanceof Error ? err.message : t('Error al guardar la sesión'))
     } finally {
       setSaving(false)
     }

@@ -1,7 +1,9 @@
+import { t } from '@/i18n'
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useBackendProviders } from '@/shared/llm/hooks'
 import { DEFAULT_MODELS } from '@/shared/llm/defaults'
 import { BackendPanel } from './BackendPanel'
+import { ProviderLinks } from './ProviderLinks'
 import { RemoteProviderPanel } from './RemoteProviderPanel'
 
 interface Props {
@@ -28,8 +30,10 @@ export function RemoteProviderSection({ providerId, label }: Props) {
 
   return (
     <div className="space-y-4">
+      <ProviderLinks providerId={providerId} />
+
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Origen del modelo</legend>
+        <legend className="text-sm font-medium">{t('Origen del modelo')}</legend>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input
@@ -38,7 +42,7 @@ export function RemoteProviderSection({ providerId, label }: Props) {
               checked={source === 'direct'}
               onChange={() => select('direct')}
             />
-            Directo desde el navegador
+            {t('Directo desde el navegador')}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -48,12 +52,12 @@ export function RemoteProviderSection({ providerId, label }: Props) {
               disabled={!backendHasKey && source !== 'backend'}
               onChange={() => select('backend')}
             />
-            Modelo del backend
+            {t('Modelo del backend')}
           </label>
         </div>
         {!backendHasKey && (
           <p className="text-xs text-muted-foreground">
-            El modelo del backend requiere el backend activo con {providerId.toUpperCase()}_API_KEY.
+            {t('El modelo del backend requiere el backend activo con {name}.', { name: `${providerId.toUpperCase()}_API_KEY` })}
           </p>
         )}
       </fieldset>

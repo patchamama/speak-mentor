@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
@@ -42,7 +43,7 @@ export function BackendPanel({ providerId, label }: Props) {
       const list = await fetchBackendModels(providerId)
       setModels(list)
     } catch (err) {
-      setModelsError(err instanceof Error ? err.message : 'Error al listar modelos')
+      setModelsError(err instanceof Error ? err.message : t('Error al listar modelos'))
     } finally {
       setModelsLoading(false)
     }
@@ -53,10 +54,10 @@ export function BackendPanel({ providerId, label }: Props) {
     try {
       const list = await fetchBackendModels(providerId)
       setModels(list)
-      toast.success(`Conexión OK — ${list.length} modelos disponibles`)
+      toast.success(t('Conexión correcta: {count} modelos disponibles', { count: list.length }))
     } catch (err) {
       toast.error(
-        `Falló la conexión: ${err instanceof Error ? err.message : 'error desconocido'}`,
+        t('Falló la conexión: {message}', { message: err instanceof Error ? err.message : t('Error desconocido') }),
       )
     } finally {
       setTesting(false)
@@ -75,7 +76,7 @@ export function BackendPanel({ providerId, label }: Props) {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner /> Consultando backend…
+        <Spinner /> {t('Consultando backend…')}
       </div>
     )
   }
@@ -84,10 +85,9 @@ export function BackendPanel({ providerId, label }: Props) {
     return (
       <div className="space-y-3">
         <p role="alert" className="text-xs text-destructive">
-          El backend no tiene {providerId.toUpperCase()}_API_KEY configurada o no responde.
-          Puedes usar el modo directo desde el navegador.
+          {t('El backend no tiene {name} configurada o no responde. Puedes usar el modo directo desde el navegador.', { name: `${providerId.toUpperCase()}_API_KEY` })}
         </p>
-        <Button variant="outline" onClick={refetch}>Volver a comprobar</Button>
+        <Button variant="outline" onClick={refetch}>{t('Volver a comprobar')}</Button>
       </div>
     )
   }
@@ -95,9 +95,9 @@ export function BackendPanel({ providerId, label }: Props) {
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs">
-        <p className="font-semibold">{label}: modelo del backend</p>
+        <p className="font-semibold">{t('{name}: modelo del backend', { name: label })}</p>
         <p className="text-muted-foreground mt-1">
-          La API key vive en el backend; el navegador nunca la ve.
+          {t('La API key vive en el backend; el navegador nunca la ve.')}
         </p>
       </div>
 
@@ -105,9 +105,9 @@ export function BackendPanel({ providerId, label }: Props) {
         <>
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium" htmlFor={`${providerId}-backend-model-select`}>Modelo</label>
+              <label className="text-sm font-medium" htmlFor={`${providerId}-backend-model-select`}>{t('Modelo')}</label>
               {models.length > 0 && (
-                <span className="text-xs text-muted-foreground">{models.length} disponibles</span>
+                <span className="text-xs text-muted-foreground">{t('{count} disponibles', { count: models.length })}</span>
               )}
             </div>
 
@@ -124,7 +124,7 @@ export function BackendPanel({ providerId, label }: Props) {
               </select>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {modelsLoading ? 'Cargando modelos…' : 'Sin lista de modelos cargada'}
+                {modelsLoading ? t('Cargando modelos…') : t('Sin lista de modelos cargada')}
               </p>
             )}
 
@@ -133,7 +133,7 @@ export function BackendPanel({ providerId, label }: Props) {
 
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor={`${providerId}-backend-model-manual`}>
-              O ingresá un modelo manualmente
+              {t('O escribe un modelo manualmente')}
             </label>
             <div className="flex gap-2">
               <input
@@ -149,7 +149,7 @@ export function BackendPanel({ providerId, label }: Props) {
                 onClick={() => onChangeModel(manualModel.trim())}
                 disabled={!manualModel.trim() || manualModel === entry!.model}
               >
-                Aplicar
+                {t('Aplicar')}
               </Button>
             </div>
           </div>
@@ -157,11 +157,11 @@ export function BackendPanel({ providerId, label }: Props) {
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={testConnection} disabled={testing}>
               {testing ? <Spinner className="mr-2" /> : null}
-              Probar conexión
+              {t('Probar conexión')}
             </Button>
             <Button variant="outline" onClick={loadModels} disabled={modelsLoading}>
               {modelsLoading ? <Spinner className="mr-2" /> : null}
-              Recargar modelos
+              {t('Recargar modelos')}
             </Button>
           </div>
         </>

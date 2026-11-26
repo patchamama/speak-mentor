@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
@@ -52,7 +53,7 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
         onSaved={(payload) => {
           setRemoteProvider(providerId, { ...payload.entry, useBackend: false })
           setDecryptedKey(providerId, payload.apiKey)
-          toast.success(`${label} configurado y verificado`)
+          toast.success(t('{name} configurado y verificado', { name: label }))
         }}
       />
     )
@@ -67,7 +68,7 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
         onForget={() => {
           removeRemoteProvider(providerId)
           clearProvider(providerId)
-          toast.info(`${label} olvidado`)
+          toast.info(t('{name} olvidado', { name: label }))
         }}
       />
     )
@@ -85,7 +86,7 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
       onForget={() => {
         removeRemoteProvider(providerId)
         clearProvider(providerId)
-        toast.info(`${label} olvidado`)
+        toast.info(t('{name} olvidado', { name: label }))
       }}
     />
   )
@@ -124,7 +125,7 @@ function FirstTimeSetup({
       const models = await provider.listModels()
       const preferred = models.find((m) => m.name === DEFAULT_MODELS[providerId])?.name
       const resolvedModel = preferred || models[0]?.name || ''
-      if (!resolvedModel) throw new Error('No se encontró ningún modelo disponible')
+      if (!resolvedModel) throw new Error(t('No se encontró ningún modelo disponible'))
 
       const encryptedApiKey = await sealSecret(apiKey.trim())
       onSaved({
@@ -133,9 +134,9 @@ function FirstTimeSetup({
       })
     } catch (err) {
       const msg =
-        err instanceof Error && err.message ? err.message : 'Error verificando la API key'
+        err instanceof Error && err.message ? err.message : t('Error verificando la API key')
       setError(msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')
-        ? 'API key inválida — la rechazó el proveedor.'
+        ? t('API key inválida: la rechazó el proveedor.')
         : msg)
     } finally {
       setBusy(false)
@@ -145,9 +146,9 @@ function FirstTimeSetup({
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs space-y-1">
-        <p className="font-semibold">Configurar {label}</p>
+        <p className="font-semibold">{t('Configurar {name}', { name: label })}</p>
         <p className="text-muted-foreground">
-          La API key se cifra con tu clave maestra. Al conectar se cargan los modelos disponibles.
+          {t('La API key se cifra con tu clave maestra. Al conectar se cargan los modelos disponibles.')}
         </p>
       </div>
 
@@ -168,7 +169,7 @@ function FirstTimeSetup({
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={!canSubmit || busy}>
           {busy ? <Spinner className="mr-2" /> : null}
-          Conectar y cargar modelos
+          {t('Conectar y cargar modelos')}
         </Button>
       </div>
 
@@ -214,7 +215,7 @@ function UnlockedPanel({
       const list = await buildActiveProvider().listModels()
       setModels(list)
     } catch (err) {
-      setModelsError(err instanceof Error ? err.message : 'No se pudieron cargar los modelos')
+      setModelsError(err instanceof Error ? err.message : t('No se pudieron cargar los modelos'))
     } finally {
       setLoadingModels(false)
     }
@@ -225,10 +226,10 @@ function UnlockedPanel({
     try {
       const list = await buildActiveProvider().listModels()
       setModels(list)
-      toast.success(`Conexión OK — ${list.length} modelos disponibles`)
+      toast.success(t('Conexión correcta: {count} modelos disponibles', { count: list.length }))
     } catch (err) {
       toast.error(
-        `Falló la conexión: ${err instanceof Error ? err.message : 'error desconocido'}`,
+        t('Falló la conexión: {message}', { message: err instanceof Error ? err.message : t('Error desconocido') }),
       )
     } finally {
       setTesting(false)
@@ -244,14 +245,14 @@ function UnlockedPanel({
   return (
     <div className="space-y-4">
       <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs">
-        🔓 <span className="font-semibold">{label}</span> desbloqueado · directo desde el navegador
+        🔓 <span className="font-semibold">{label}</span> {t('desbloqueado · directo desde el navegador')}
       </p>
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium" htmlFor={`${providerId}-model-select`}>Modelo</label>
+          <label className="text-sm font-medium" htmlFor={`${providerId}-model-select`}>{t('Modelo')}</label>
           {models.length > 0 && (
-            <span className="text-xs text-muted-foreground">{models.length} disponibles</span>
+            <span className="text-xs text-muted-foreground">{t('{count} disponibles', { count: models.length })}</span>
           )}
         </div>
 
@@ -271,14 +272,14 @@ function UnlockedPanel({
           </select>
         ) : (
           <p className="text-xs text-muted-foreground">
-            {loadingModels ? 'Cargando modelos…' : 'Sin modelos cargados. Usa "Recargar modelos".'}
+            {loadingModels ? t('Cargando modelos…') : t('Sin modelos cargados.')}
           </p>
         )}
 
         {modelsError && <p className="text-xs text-destructive">{modelsError}</p>}
       </div>
 
-      <Field label="O ingresá un modelo manualmente" htmlFor={`${providerId}-model-manual`}>
+      <Field label={t('O escribe un modelo manualmente')} htmlFor={`${providerId}-model-manual`}>
         <div className="flex gap-2">
           <input
             id={`${providerId}-model-manual`}
@@ -295,7 +296,7 @@ function UnlockedPanel({
             }}
             disabled={!manualModel.trim() || manualModel === currentModel}
           >
-            Aplicar
+            {t('Aplicar')}
           </Button>
         </div>
       </Field>
@@ -303,14 +304,14 @@ function UnlockedPanel({
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" onClick={testConnection} disabled={testing}>
           {testing ? <Spinner className="mr-2" /> : null}
-          Probar conexión
+          {t('Probar conexión')}
         </Button>
         <Button variant="outline" onClick={fetchModels} disabled={loadingModels}>
           {loadingModels ? <Spinner className="mr-2" /> : null}
-          Recargar modelos
+          {t('Recargar modelos')}
         </Button>
         <Button variant="outline" onClick={onForget}>
-          Olvidar API key
+          {t('Olvidar API key')}
         </Button>
       </div>
     </div>

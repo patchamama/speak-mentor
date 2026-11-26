@@ -29,6 +29,8 @@ Write German, get inline CEFR-aware corrections with color-coded error highlight
 | **Backend proxy** | Optional Flask `/api/llm/*` proxy keeps keys in server env vars instead of the browser |
 | **Settings** | Provider picker, model dropdown per provider, manual model override, prompt editor, per-pass pipeline, model params |
 | **Pipeline control** | Toggle advanced mode (all 3 passes) vs simple (correction only) per submission |
+| **Spanish and German UI** | Language selector in the header; AI explanations and the common-errors content follow it. UI text lives in `frontend/src/i18n` and tests fail on missing translations |
+| **Provider billing links** | API key, balance/top-up and usage pages for OpenAI, Anthropic and Gemini |
 | **Dark mode** | Persisted to `localStorage` |
 | **Keyboard shortcut** | `Cmd+Enter` / `Ctrl+Enter` to submit |
 

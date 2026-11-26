@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { useState } from 'react'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
@@ -34,7 +35,7 @@ function StatsPanel() {
   if (anyError) {
     return (
       <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-2">
-        <p className="text-sm font-medium text-destructive">No se pudo cargar el historial</p>
+        <p className="text-sm font-medium text-destructive">{t('No se pudo cargar el historial')}</p>
         <p className="text-xs text-muted-foreground">{error?.message}</p>
       </div>
     )
@@ -44,20 +45,20 @@ function StatsPanel() {
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="rounded-lg border p-4 space-y-3">
-          <p className="text-sm font-medium">Errores por tipo (top 10)</p>
-          {byType && byType.length > 0 ? <ByTypeChart data={byType.slice(0, 10)} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún — guardá una sesión de corrección.</p>}
+          <p className="text-sm font-medium">{t('Errores por tipo (top 10)')}</p>
+          {byType && byType.length > 0 ? <ByTypeChart data={byType.slice(0, 10)} /> : <p className="text-sm text-muted-foreground italic">{t('Sin datos aún: guarda una sesión de corrección.')}</p>}
         </div>
         <div className="rounded-lg border p-4 space-y-3">
-          <p className="text-sm font-medium">Errores por nivel</p>
-          {byLevel && byLevel.length > 0 ? <ByLevelChart data={byLevel} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún.</p>}
+          <p className="text-sm font-medium">{t('Errores por nivel')}</p>
+          {byLevel && byLevel.length > 0 ? <ByLevelChart data={byLevel} /> : <p className="text-sm text-muted-foreground italic">{t('Sin datos aún.')}</p>}
         </div>
       </div>
       <div className="rounded-lg border p-4 space-y-3">
-        <p className="text-sm font-medium">Errores por día (últimos 30 días)</p>
-        {timeline && timeline.length > 0 ? <TimelineChart data={timeline} /> : <p className="text-sm text-muted-foreground italic">Sin datos aún.</p>}
+        <p className="text-sm font-medium">{t('Errores por día (últimos 30 días)')}</p>
+        {timeline && timeline.length > 0 ? <TimelineChart data={timeline} /> : <p className="text-sm text-muted-foreground italic">{t('Sin datos aún.')}</p>}
       </div>
       <div className="rounded-lg border p-4 space-y-3">
-        <p className="text-sm font-medium">Reglas más incumplidas (top 10)</p>
+        <p className="text-sm font-medium">{t('Reglas más incumplidas (top 10)')}</p>
         <TopRulesTable data={topRules ?? []} />
       </div>
     </div>
@@ -65,9 +66,9 @@ function StatsPanel() {
 }
 
 const MODE_FILTER_OPTIONS = [
-  { value: '', label: 'Todos' },
-  { value: 'correction', label: 'Corrección' },
-  { value: 'translation', label: 'Traducción' },
+  { value: '', label: msg('Todos') },
+  { value: 'correction', label: msg('Corrección') },
+  { value: 'translation', label: msg('Traducción') },
 ]
 
 
@@ -101,17 +102,17 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Historial</h2>
-          <p className="text-xs text-muted-foreground">Datos guardados en: {STORAGE_LABELS[target]}</p>
+          <h2 className="text-lg font-semibold">{t('Historial')}</h2>
+          <p className="text-xs text-muted-foreground">{t('Datos guardados en: {target}', { target: t(STORAGE_LABELS[target]) })}</p>
         </div>
         <div className="flex gap-1">
-          {(['sessions', 'stats'] as const).map((t) => (
+          {(['sessions', 'stats'] as const).map((id) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${tab === t ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${tab === id ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              {t === 'sessions' ? 'Sesiones' : 'Estadísticas'}
+              {id === 'sessions' ? t('Sesiones') : t('Estadísticas')}
             </button>
           ))}
         </div>
@@ -128,11 +129,11 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                   onClick={() => { setModeFilter(opt.value); setPage(1); setSelectedId(null) }}
                   className={`text-sm px-3 py-1 rounded-md transition-colors ${modeFilter === opt.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}
                 >
-                  {opt.label}
+                  {t(opt.label)}
                 </button>
               ))}
               <Button variant="outline" size="sm" onClick={handleExport} className="ml-auto">
-                Exportar JSON
+                {t('Exportar JSON')}
               </Button>
             </div>
 
@@ -169,7 +170,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
           {/* Right: detail */}
           <div className="space-y-4">
             {!selectedId && (
-              <p className="text-sm text-muted-foreground italic">Seleccioná una sesión para ver el detalle.</p>
+              <p className="text-sm text-muted-foreground italic">{t('Selecciona una sesión para ver el detalle.')}</p>
             )}
             {detailLoading && <div className="flex justify-center p-8"><Spinner /></div>}
             {detail && !detailLoading && (() => {
@@ -219,7 +220,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                     <>
                       {/* Level assessment */}
                       <div className="flex items-center gap-3 text-sm">
-                        <span className="text-muted-foreground">Nivel detectado:</span>
+                        <span className="text-muted-foreground">{t('Nivel detectado:')}</span>
                         <span className="font-medium">{correctionData.level_assessment.detected_level}</span>
                         {correctionData.level_assessment.gap_notes && (
                           <span className="text-muted-foreground">— {correctionData.level_assessment.gap_notes}</span>
@@ -228,7 +229,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
 
                       {/* Corrected text */}
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto corregido</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Texto corregido')}</p>
                         <p className="text-sm leading-relaxed">{correctionData.corrected}</p>
                       </div>
 
@@ -250,7 +251,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                       {/* Highlighted original + error panel */}
                       <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original con errores</p>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Original con errores')}</p>
                           <div className="rounded-lg border p-4">
                             <ErrorHighlight
                               text={detail.input_text}
@@ -262,7 +263,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                         </div>
                         <div className="space-y-2">
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            Errores ({correctionData.summary.error_count})
+                            {t('Errores')} ({correctionData.summary.error_count})
                           </p>
                           <ErrorPanel
                             errors={correctionData.errors}
@@ -286,7 +287,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                         <div key={i} className="rounded-lg border p-4 space-y-4">
                           {vocabularyHistory.length > 1 && (
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                              Vocabulario — generación {i + 1}
+                              {t('Vocabulario — generación {n}', { n: i + 1 })}
                             </p>
                           )}
                           <VocabularyPanel cards={result.vocab_cards} />
@@ -302,7 +303,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                         <div key={i} className="rounded-lg border p-4 space-y-4">
                           {exercisesHistory.length > 1 && (
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                              Ejercicios — generación {i + 1}
+                              {t('Ejercicios — generación {n}', { n: i + 1 })}
                             </p>
                           )}
                           <ExercisesPanel exercises={result.exercises} studyAdvice={result.study_advice} />
@@ -314,11 +315,11 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                   {!correctionData && vocabularyHistory.length === 0 && exercisesHistory.length === 0 && (
                     <>
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Texto original')}</p>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.input_text}</p>
                       </div>
                       <div className="rounded-lg bg-muted/30 p-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Traducción')}</p>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.output_text}</p>
                       </div>
                     </>
@@ -326,11 +327,11 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                   {detail.mode === 'translation' && (
                     <>
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto original</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Texto original')}</p>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.input_text}</p>
                       </div>
                       <div className="rounded-lg bg-muted/30 p-4 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Traducción')}</p>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{detail.output_text}</p>
                       </div>
                     </>

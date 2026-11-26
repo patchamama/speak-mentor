@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -60,7 +61,7 @@ export function TimelineChart({ data }: TimelineChartProps) {
 }
 
 export function TopRulesTable({ data }: TopRulesProps) {
-  if (data.length === 0) return <p className="text-sm text-muted-foreground italic">Sin datos.</p>
+  if (data.length === 0) return <p className="text-sm text-muted-foreground italic">{t('Sin datos.')}</p>
   return (
     <div className="space-y-1.5">
       {data.map((r, i) => (

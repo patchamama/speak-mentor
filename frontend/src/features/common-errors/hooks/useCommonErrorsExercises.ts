@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useCallback } from 'react'
 import { useFaviconStore } from '@/stores/faviconStore'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
@@ -42,7 +43,7 @@ export interface CommonErrorsExercisesResult {
 }
 
 // Tables that should never appear as fill exercises
-const EXCLUDED_TABLE_TITLES = ['Usos y matices de cada modal']
+const EXCLUDED_TABLE_TITLES = ['Usos y matices de cada modal', 'Gebrauch und Nuancen der Modalverben']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ function refTableToFillTable(table: ReferenceTable, id: number): FillTableExerci
     id,
     type: 'fill_table',
     targets_error_type: 'declension',
-    instruction: `Completá la tabla: ${table.title}`,
+    instruction: t('Completa la tabla: {title}', { title: table.title }),
     table_title: table.title,
     headers: table.headers,
     rows,
@@ -106,8 +107,8 @@ export function useCommonErrorsExercises(
     if (!provider) {
       setError(
         locked
-          ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.`
-          : 'Configurá un proveedor de LLM en Configuración → Conexión y almacenamiento.',
+          ? t('{name} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.', { name: PROVIDER_LABELS[locked] })
+          : t('Configura un proveedor de LLM en Configuración → Conexión y almacenamiento.'),
       )
       setStatus('error')
       return
@@ -135,7 +136,7 @@ export function useCommonErrorsExercises(
       const parsed = JSON.parse(raw) as CommonErrorsExercisesResult
 
       if (!parsed.exercises || !Array.isArray(parsed.exercises)) {
-        throw new Error('Respuesta inválida del modelo')
+        throw new Error(t('Respuesta inválida del modelo'))
       }
 
       // Keep only choose_one from AI (discard any AI-generated fill_table — use real data instead)
@@ -146,7 +147,7 @@ export function useCommonErrorsExercises(
       setStatus('done')
       setTask(faviconKey, null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      setError(err instanceof Error ? err.message : t('Error desconocido'))
       setStatus('error')
       setTask(faviconKey, null)
     }

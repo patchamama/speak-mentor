@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Exercise } from '../hooks/useCorrectionPipeline'
@@ -38,11 +39,11 @@ function ChooseOne({ exercise }: { exercise: Exercise }) {
       {revealed && (
         <div className="rounded-md bg-blue-500/10 border border-blue-500/20 px-3 py-2 space-y-1">
           <p className="text-xs font-medium text-blue-700 dark:text-blue-400">
-            {selected === exercise.answer ? '✓ Correcto' : `✗ Incorrecto — respuesta: ${exercise.answer}`}
+            {selected === exercise.answer ? t('✓ Correcto') : t('✗ Incorrecto — respuesta: {answer}', { answer: exercise.answer })}
           </p>
           <p className="text-xs">{exercise.answer_explanation}</p>
           {exercise.rule_reference && (
-            <p className="text-xs text-muted-foreground font-mono">Regla: {exercise.rule_reference}</p>
+            <p className="text-xs text-muted-foreground font-mono">{t('Regla')}: {exercise.rule_reference}</p>
           )}
         </div>
       )}
@@ -75,7 +76,7 @@ export function ExercisesPanel({
   return (
     <div className="space-y-4">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Ejercicios ({exercises.length})
+        {t('Ejercicios')} ({exercises.length})
       </p>
       <div className="space-y-3">
         {exercises.map((ex, i) => (

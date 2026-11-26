@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { ERROR_COLORS_MAP } from './ErrorHighlight'
@@ -10,9 +11,9 @@ const SEVERITY_BADGE: Record<string, string> = {
 }
 
 const SEVERITY_LABEL: Record<string, string> = {
-  critical: 'Crítico',
-  major: 'Mayor',
-  minor: 'Menor',
+  critical: msg('Crítico'),
+  major: msg('Mayor'),
+  minor: msg('Menor'),
 }
 
 interface ErrorPanelProps {
@@ -33,7 +34,7 @@ export function ErrorPanel({ errors, activeIdx, onSelect }: ErrorPanelProps) {
   if (errors.length === 0) {
     return (
       <div className="text-sm text-muted-foreground italic p-4">
-        Sin errores encontrados.
+        {t('Sin errores encontrados.')}
       </div>
     )
   }
@@ -58,10 +59,10 @@ export function ErrorPanel({ errors, activeIdx, onSelect }: ErrorPanelProps) {
                 {err.type}
               </span>
               <span className={cn('text-xs px-2 py-0.5 rounded-full', SEVERITY_BADGE[err.severity])}>
-                {SEVERITY_LABEL[err.severity]}
+                {t(SEVERITY_LABEL[err.severity])}
               </span>
               {(err as { position_unreliable?: boolean }).position_unreliable && (
-                <span className="text-xs text-muted-foreground">(sin posición)</span>
+                <span className="text-xs text-muted-foreground">{t('(sin posición)')}</span>
               )}
             </div>
             <div className="flex items-center gap-2 mb-2">

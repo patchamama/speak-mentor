@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { CEFRLevel } from '@/shared/types'
 
@@ -11,7 +12,7 @@ interface LevelSelectorProps {
 
 export function LevelSelector({ value, onChange, className }: LevelSelectorProps) {
   return (
-    <div className={cn('flex gap-1', className)} role="group" aria-label="Nivel CEFR">
+    <div className={cn('flex gap-1', className)} role="group" aria-label={t('Nivel CEFR')}>
       {LEVELS.map((level) => (
         <button
           key={level}

@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { useState, useCallback } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -28,14 +29,14 @@ interface TranslationViewProps {
   onSave: (text: string, sourceLang: Lang, targetLang: Lang, level: CEFRLevel) => void
 }
 
-const LANG_LABELS: Record<Lang, string> = { de: 'Alemán', es: 'Español' }
+const LANG_LABELS: Record<Lang, string> = { de: msg('Alemán'), es: msg('Español') }
 const NOTE_TYPE_LABELS: Record<string, string> = {
-  false_friend: 'Falso amigo',
-  idiom: 'Modismo',
-  collocation: 'Colocación',
-  register: 'Registro',
-  cultural: 'Cultural',
-  polysemy: 'Polisemia',
+  false_friend: msg('Falso amigo'),
+  idiom: msg('Modismo'),
+  collocation: msg('Colocación'),
+  register: msg('Registro'),
+  cultural: msg('Cultural'),
+  polysemy: msg('Polisemia'),
 }
 
 export function TranslationView({
@@ -78,7 +79,7 @@ export function TranslationView({
       {/* Lang selector + level */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold">Traducción</h2>
+          <h2 className="text-lg font-semibold">{t('Traducción')}</h2>
           <InputHistory
             history={history}
             onSelect={(entry) => setText(entry)}
@@ -101,7 +102,7 @@ export function TranslationView({
                 sourceLang === l ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
               )}
             >
-              {LANG_LABELS[l]}
+              {t(LANG_LABELS[l])}
             </button>
           ))}
         </div>
@@ -109,39 +110,39 @@ export function TranslationView({
           type="button"
           onClick={swap}
           className="text-muted-foreground hover:text-foreground transition-colors px-2"
-          aria-label="Invertir idiomas"
+          aria-label={t('Invertir idiomas')}
         >
           ⇄
         </button>
-        <span className="text-sm text-muted-foreground">→ {LANG_LABELS[targetLang]}</span>
+        <span className="text-sm text-muted-foreground">→ {t(LANG_LABELS[targetLang])}</span>
       </div>
 
       {/* Input */}
       <div className="space-y-3">
         <textarea
           className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder={`Escribí en ${LANG_LABELS[sourceLang]}... (Cmd+Enter para traducir)`}
+          placeholder={t('Escribe en {language}... (Cmd+Enter para traducir)', { language: t(LANG_LABELS[sourceLang]) })}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          aria-label={`Texto en ${LANG_LABELS[sourceLang]} para traducir`}
+          aria-label={t('Texto en {language} para traducir', { language: t(LANG_LABELS[sourceLang]) })}
         />
         <div className="flex items-center gap-3 flex-wrap">
           <Button onClick={handleSubmit} disabled={loading || !text.trim()} aria-busy={loading}>
-            {loading ? <><Spinner className="mr-2" />Traduciendo... {elapsed}s</> : 'Traducir'}
+            {loading ? <><Spinner className="mr-2" />{t('Traduciendo...')} {elapsed}s</> : t('Traducir')}
           </Button>
           <Button variant="outline" onClick={handleRender} disabled={!text.trim()}>
-            Renderizar
+            {t('Renderizar')}
           </Button>
           {result && !savedSessionId && (
             <Button variant="outline" onClick={handleSave} disabled={saving}>
-              {saving ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar'}
+              {saving ? <><Spinner className="mr-2" />{t('Guardando...')}</> : t('Guardar')}
             </Button>
           )}
           {savedSessionId && (
-            <span className="text-sm text-muted-foreground">✓ Guardado (#{savedSessionId})</span>
+            <span className="text-sm text-muted-foreground">{t('✓ Guardado (#{id})', { id: savedSessionId })}</span>
           )}
-          <span className="ml-auto text-xs text-muted-foreground">{text.length} chars</span>
+          <span className="ml-auto text-xs text-muted-foreground">{t('{count} caracteres', { count: text.length })}</span>
         </div>
       </div>
 
@@ -150,7 +151,7 @@ export function TranslationView({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Texto renderizado
+              {t('Texto renderizado')}
             </p>
             <a
               href={`https://translate.google.com/?sl=${sourceLang}&tl=${targetLang}&text=${encodeURIComponent(text)}&op=translate`}
@@ -158,7 +159,7 @@ export function TranslationView({
               rel="noopener noreferrer"
               className="text-xs text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1"
             >
-              Traducir con Google →
+              {t('Traducir con Google →')}
             </a>
           </div>
           <div
@@ -172,17 +173,17 @@ export function TranslationView({
       {/* Raw error */}
       {rawError && (
         <div className="rounded-md border border-destructive p-4 space-y-2">
-          <p className="text-sm text-destructive font-medium">El modelo devolvió JSON inválido</p>
+          <p className="text-sm text-destructive font-medium">{t('El modelo devolvió JSON inválido')}</p>
           <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap">{rawError}</pre>
         </div>
       )}
 
       {/* Result */}
       {result && (
-        <div className="space-y-4" aria-live="polite" aria-label="Resultado de traducción">
+        <div className="space-y-4" aria-live="polite" aria-label={t('Resultado de traducción')}>
           {/* Primary translation */}
           <div className="rounded-lg border bg-muted/30 p-5 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Traducción</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Traducción')}</p>
             <p className="text-base leading-relaxed">{result.translation}</p>
           </div>
 
@@ -194,7 +195,7 @@ export function TranslationView({
                 className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
                 onClick={() => setShowAlternatives(!showAlternatives)}
               >
-                {showAlternatives ? '▼' : '▶'} Alternativas ({result.alternatives.length})
+                {showAlternatives ? '▼' : '▶'} {t('Alternativas')} ({result.alternatives.length})
               </button>
               {showAlternatives && (
                 <div className="space-y-2">
@@ -214,7 +215,7 @@ export function TranslationView({
             {/* Vocabulary notes */}
             {result.vocabulary_notes && result.vocabulary_notes.length > 0 && (
               <div className="rounded-lg border p-4 space-y-3">
-                <p className="text-sm font-medium">Vocabulario</p>
+                <p className="text-sm font-medium">{t('Vocabulario')}</p>
                 <div className="space-y-2">
                   {result.vocabulary_notes.map((note, i) => (
                     <div key={i} className="text-sm space-y-0.5">
@@ -223,7 +224,7 @@ export function TranslationView({
                         <span className="text-muted-foreground">→</span>
                         <span>{note.target_term}</span>
                         <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                          {NOTE_TYPE_LABELS[note.type] ?? note.type}
+                          {NOTE_TYPE_LABELS[note.type] ? t(NOTE_TYPE_LABELS[note.type]) : note.type}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{note.explanation}</p>
@@ -236,7 +237,7 @@ export function TranslationView({
             {/* Grammar notes */}
             {result.grammar_notes && result.grammar_notes.length > 0 && (
               <div className="rounded-lg border p-4 space-y-3">
-                <p className="text-sm font-medium">Gramática</p>
+                <p className="text-sm font-medium">{t('Gramática')}</p>
                 <div className="space-y-2">
                   {result.grammar_notes.map((note, i) => (
                     <div key={i} className="text-sm space-y-0.5">
@@ -255,7 +256,7 @@ export function TranslationView({
           {/* Level adaptation note */}
           {result.level_adaptation_notes && (
             <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Adaptación al nivel</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{t('Adaptación al nivel')}</p>
               <p className="text-sm text-muted-foreground">{result.level_adaptation_notes}</p>
             </div>
           )}

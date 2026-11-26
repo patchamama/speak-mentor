@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -31,9 +32,9 @@ export function useDeleteSession() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessions'] })
       qc.invalidateQueries({ queryKey: ['stats'] })
-      toast.success('Sesión eliminada')
+      toast.success(t('Sesión eliminada'))
     },
-    onError: (err) => toast.error(err.message || 'Error al eliminar la sesión'),
+    onError: (err) => toast.error(err.message || t('Error al eliminar la sesión')),
   })
 }
 

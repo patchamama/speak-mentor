@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { Spinner } from '@/shared/ui/Spinner'
 import { cn } from '@/lib/utils'
 import type { PassState } from '../hooks/useCorrectionPipeline'
@@ -5,9 +6,9 @@ import type { CorrectionPassId } from '@/shared/types'
 import { useElapsedTimer } from '@/shared/hooks/useElapsedTimer'
 
 const PASS_LABELS: Record<CorrectionPassId, string> = {
-  correction: 'Corrección',
-  vocabulary: 'Vocabulario',
-  exercises: 'Ejercicios',
+  correction: msg('Corrección'),
+  vocabulary: msg('Vocabulario'),
+  exercises: msg('Ejercicios'),
 }
 
 function PassBadge({
@@ -34,7 +35,7 @@ function PassBadge({
   const inner = (
     <>
       {state.status === 'running' ? <Spinner className="h-3 w-3" /> : <span>{icon}</span>}
-      <span>{PASS_LABELS[id]}</span>
+      <span>{t(PASS_LABELS[id])}</span>
       {state.status === 'running' && <span className="text-xs opacity-70">{elapsed}s</span>}
       {state.status === 'done' && state.elapsedMs && (
         <span className="text-xs opacity-70">{(state.elapsedMs / 1000).toFixed(1)}s</span>
@@ -56,7 +57,7 @@ function PassBadge({
     return (
       <button
         type="button"
-        title={`Regenerar ${PASS_LABELS[id]}`}
+        title={t('Regenerar {name}', { name: t(PASS_LABELS[id]) })}
         onClick={onRerun}
         className={baseClass}
       >
@@ -83,7 +84,7 @@ export function PassStatusBar({
   if (!anyActive) return null
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-live="polite" aria-label="Estado del pipeline">
+    <div className="flex flex-wrap items-center gap-2" aria-live="polite" aria-label={t('Estado del pipeline')}>
       {passes.map((p) => (
         <PassBadge
           key={p}

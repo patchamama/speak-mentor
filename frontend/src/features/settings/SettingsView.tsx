@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -14,25 +15,25 @@ import type { ModelParams, CorrectionPassId } from '@/shared/types'
 type SettingsTab = 'connection' | 'params' | 'pipeline' | 'prompts' | 'terminal'
 
 const TAB_LABELS: Record<SettingsTab, string> = {
-  connection: 'Conexión y almacenamiento',
-  params: 'Parámetros',
-  pipeline: 'Pipeline',
+  connection: msg('Conexión y almacenamiento'),
+  params: msg('Parámetros'),
+  pipeline: msg('Pipeline'),
   prompts: 'Prompts',
-  terminal: 'Terminal',
+  terminal: msg('Terminal'),
 }
 
 const PASS_INFO: Record<CorrectionPassId, { label: string; description: string }> = {
   correction: {
-    label: 'Corrección gramatical',
-    description: 'Detecta y explica errores en el texto. Siempre activo.',
+    label: msg('Corrección gramatical'),
+    description: msg('Detecta y explica errores en el texto. Siempre activo.'),
   },
   vocabulary: {
-    label: 'Vocabulario enriquecido',
-    description: 'Genera fichas de vocabulario con info gramatical completa (género, plural, conjugación irregular, verbos separables).',
+    label: msg('Vocabulario enriquecido'),
+    description: msg('Genera fichas de vocabulario con info gramatical completa (género, plural, conjugación irregular, verbos separables).'),
   },
   exercises: {
-    label: 'Ejercicios personalizados',
-    description: 'Crea ~10 ejercicios dirigidos exactamente a los tipos de errores encontrados en el texto.',
+    label: msg('Ejercicios personalizados'),
+    description: msg('Crea ~10 ejercicios dirigidos exactamente a los tipos de errores encontrados en el texto.'),
   },
 }
 
@@ -62,7 +63,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
       num_ctx: Number(data.num_ctx),
       timeout: Number(data.timeout),
     })
-    toast.success('Parámetros guardados')
+    toast.success(t('Parámetros guardados'))
   }
 
   // ── Prompts ────────────────────────────────────────────────────────────────
@@ -79,10 +80,10 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
     setDrafts((d) => ({ ...d, [tab]: value }))
 
   const PROMPT_TAB_LABELS: Record<PromptTabId, string> = {
-    correction: 'Corrección',
-    translation: 'Traducción',
-    vocabulary: 'Vocabulario',
-    exercises: 'Ejercicios',
+    correction: msg('Corrección'),
+    translation: msg('Traducción'),
+    vocabulary: msg('Vocabulario'),
+    exercises: msg('Ejercicios'),
   }
 
   const PROMPT_TAB_VARS: Record<PromptTabId, string> = {
@@ -99,7 +100,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
       vocabularySystem: drafts.vocabulary,
       exercisesSystem: drafts.exercises,
     })
-    toast.success('Prompts guardados')
+    toast.success(t('Prompts guardados'))
   }
 
   const onResetPrompts = () => {
@@ -111,27 +112,27 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
       vocabulary: defaults.vocabularySystem,
       exercises: defaults.exercisesSystem,
     })
-    toast.success('Prompts restablecidos')
+    toast.success(t('Prompts restablecidos'))
   }
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h2 className="text-lg font-semibold">Configuración</h2>
+      <h2 className="text-lg font-semibold">{t('Configuración')}</h2>
 
       {/* Tab selector */}
       <div className="flex gap-1 border-b pb-0">
-        {(Object.keys(TAB_LABELS) as SettingsTab[]).map((t) => (
+        {(Object.keys(TAB_LABELS) as SettingsTab[]).map((id) => (
           <button
-            key={t}
+            key={id}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(id)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t
+              tab === id
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {TAB_LABELS[t]}
+            {t(TAB_LABELS[id])}
           </button>
         ))}
       </div>
@@ -141,9 +142,9 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
         <div className="space-y-5">
           <MasterPasswordSection />
 
-          <h3 className="text-sm font-semibold">Modelo de IA</h3>
+          <h3 className="text-sm font-semibold">{t('Modelo de IA')}</h3>
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="provider-select">Proveedor</label>
+            <label className="text-sm font-medium" htmlFor="provider-select">{t('Proveedor')}</label>
             <select
               id="provider-select"
               className={inputClass}
@@ -156,9 +157,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
               <option value="openai">{PROVIDER_LABELS.openai}</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Ollama corre localmente sin credenciales. Anthropic, Gemini y OpenAI funcionan directo
-              desde el navegador (la API key se cifra con la clave maestra) o con el modelo del
-              backend.
+              {t('Ollama corre localmente sin credenciales. Anthropic, Gemini y OpenAI funcionan directo desde el navegador (la API key se cifra con la clave maestra) o con el modelo del backend.')}
             </p>
           </div>
 
@@ -172,7 +171,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
           )}
 
           <div className="border-t pt-5 space-y-3">
-            <h3 className="text-sm font-semibold">Almacenamiento</h3>
+            <h3 className="text-sm font-semibold">{t('Almacenamiento')}</h3>
             <StorageSettings />
           </div>
         </div>
@@ -186,7 +185,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
               <label className="text-sm font-medium" htmlFor="temperature">
                 Temperature
               </label>
-              <p className="text-xs text-muted-foreground">0 = determinístico · 1 = creativo</p>
+              <p className="text-xs text-muted-foreground">{t('0 = determinístico · 1 = creativo')}</p>
               <input
                 id="temperature"
                 type="number"
@@ -200,7 +199,7 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
 
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="top_p">Top P</label>
-              <p className="text-xs text-muted-foreground">Diversidad del muestreo</p>
+              <p className="text-xs text-muted-foreground">{t('Diversidad del muestreo')}</p>
               <input
                 id="top_p"
                 type="number"
@@ -213,8 +212,8 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="num_ctx">Contexto (tokens)</label>
-              <p className="text-xs text-muted-foreground">Ventana de contexto del modelo</p>
+              <label className="text-sm font-medium" htmlFor="num_ctx">{t('Contexto (tokens)')}</label>
+              <p className="text-xs text-muted-foreground">{t('Ventana de contexto del modelo')}</p>
               <input
                 id="num_ctx"
                 type="number"
@@ -227,9 +226,9 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
 
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="timeout">
-                Timeout (segundos)
+                {t('Timeout (segundos)')}
               </label>
-              <p className="text-xs text-muted-foreground">Tiempo máximo de espera</p>
+              <p className="text-xs text-muted-foreground">{t('Tiempo máximo de espera')}</p>
               <input
                 id="timeout"
                 type="number"
@@ -247,16 +246,16 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
           </div>
 
           <div className="flex gap-3">
-            <Button type="submit">Guardar</Button>
+            <Button type="submit">{t('Guardar')}</Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
                 setModelParams(DEFAULT_MODEL_PARAMS)
-                toast.success('Parámetros restablecidos')
+                toast.success(t('Parámetros restablecidos'))
               }}
             >
-              Restablecer
+              {t('Restablecer')}
             </Button>
           </div>
         </form>
@@ -266,10 +265,9 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
       {tab === 'pipeline' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-sm font-medium mb-1">Pasadas de análisis</h3>
+            <h3 className="text-sm font-medium mb-1">{t('Pasadas de análisis')}</h3>
             <p className="text-xs text-muted-foreground">
-              Cada pasada lanza un prompt separado. Los resultados aparecen en tiempo real a medida
-              que se completan. La corrección siempre es la primera pasada.
+              {t('Cada pasada lanza un prompt separado. Los resultados aparecen en tiempo real a medida que se completan. La corrección siempre es la primera pasada.')}
             </p>
           </div>
           <div className="space-y-3">
@@ -295,25 +293,25 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
                       setPipeline({ passes: next })
                     }}
                     className="mt-0.5 h-4 w-4 rounded border-border"
-                    aria-label={info.label}
+                    aria-label={t(info.label)}
                   />
                   <label htmlFor={`pass-${passId}`} className="space-y-0.5 cursor-pointer flex-1">
                     <p className="text-sm font-medium">
-                      {info.label}
+                      {t(info.label)}
                       {isCore && (
-                        <span className="ml-2 text-xs text-muted-foreground">(siempre activo)</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{t('(siempre activo)')}</span>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground">{info.description}</p>
+                    <p className="text-xs text-muted-foreground">{t(info.description)}</p>
                   </label>
                 </div>
               )
             })}
           </div>
           <div className="rounded-md bg-muted px-4 py-3 text-xs text-muted-foreground space-y-1">
-            <p>⏱ Cada pasada adicional agrega ~30-90s dependiendo del modelo y el texto.</p>
-            <p>El vocabulario usa el texto <em>corregido</em> como entrada.</p>
-            <p>Los ejercicios solo se generan si hubo errores en la corrección.</p>
+            <p>⏱ {t('Cada pasada adicional agrega ~30-90s dependiendo del modelo y el texto.')}</p>
+            <p>{t('El vocabulario usa el texto corregido como entrada.')}</p>
+            <p>{t('Los ejercicios solo se generan si hubo errores en la corrección.')}</p>
           </div>
         </div>
       )}
@@ -322,24 +320,23 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
       {tab === 'terminal' && (
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            Ollama debe iniciarse con <code className="bg-muted px-1 rounded text-xs">OLLAMA_ORIGINS=*</code> para
-            permitir peticiones desde el navegador. Usá el script incluido para detección automática de hardware.
+            {t('Ollama debe iniciarse con OLLAMA_ORIGINS=* para permitir peticiones desde el navegador. Usa el script incluido para la detección automática de hardware.')}
           </p>
 
           {/* Script recomendado */}
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
-            <p className="text-sm font-semibold">Script recomendado (auto-detecta hardware)</p>
+            <p className="text-sm font-semibold">{t('Script recomendado (auto-detecta hardware)')}</p>
             <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">./start-ollama.sh</pre>
-            <p className="text-xs text-muted-foreground">Detecta Apple Silicon / NVIDIA / CPU e inicia Ollama con los flags óptimos para tu hardware. Incluido en la raíz del proyecto.</p>
+            <p className="text-xs text-muted-foreground">{t('Detecta Apple Silicon / NVIDIA / CPU e inicia Ollama con los flags óptimos para tu hardware. Incluido en la raíz del proyecto.')}</p>
           </div>
 
           {/* Comandos por OS */}
           {([
             {
               os: 'macOS — Apple Silicon (M1/M2/M3/M4)',
-              kill: '# Detener CLI y app del menú\npkill -f "ollama serve" 2>/dev/null || true\nosascript -e \'quit app "Ollama"\' 2>/dev/null || true\npkill -x "Ollama" 2>/dev/null || true',
+              kill: `# ${t('Detener la CLI y la app del menú')}\n` + 'pkill -f "ollama serve" 2>/dev/null || true\nosascript -e \'quit app "Ollama"\' 2>/dev/null || true\npkill -x "Ollama" 2>/dev/null || true',
               runBasic: 'OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS="*" ollama serve',
-              runFull: '# Para Mac con 16-32 GB RAM\nOLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=2 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve\n\n# Para Mac con 64 GB RAM\nOLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=3 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve',
+              runFull: `# ${t('Para Mac con {ram} GB de RAM', { ram: '16-32' })}\n` + 'OLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=2 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve\n\n' + `# ${t('Para Mac con {ram} GB de RAM', { ram: 64 })}\n` + 'OLLAMA_HOST=0.0.0.0:11434 \\\nOLLAMA_ORIGINS="*" \\\nOLLAMA_KEEP_ALIVE=-1 \\\nOLLAMA_NUM_PARALLEL=2 \\\nOLLAMA_MAX_LOADED_MODELS=3 \\\nOLLAMA_FLASH_ATTENTION=1 \\\nOLLAMA_KV_CACHE_TYPE=q8_0 \\\nollama serve',
             },
             {
               os: 'macOS — Intel / Linux',
@@ -363,11 +360,11 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
             <div key={os} className="rounded-lg border p-4 space-y-3">
               <p className="text-sm font-semibold">{os}</p>
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">1. Detener instancia previa</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">1. {t('Detener instancia previa')}</p>
                 <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{kill}</pre>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">2. Mínimo (solo CORS)</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">2. {t('Mínimo (solo CORS)')}</p>
                 <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{runBasic}</pre>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">3. Recomendado (rendimiento óptimo)</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">3. {t('Recomendado (rendimiento óptimo)')}</p>
                 <pre className="text-xs bg-muted rounded-md px-3 py-2 overflow-x-auto select-all">{runFull}</pre>
               </div>
             </div>
@@ -375,15 +372,15 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
 
           {/* Benchmark results */}
           <div className="rounded-lg border p-4 space-y-3">
-            <p className="text-sm font-semibold">Resultados de benchmark (translategemma:12b, M1 Max 64 GB)</p>
+            <p className="text-sm font-semibold">{t('Resultados de benchmark (translategemma:12b, M1 Max 64 GB)')}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-3 py-2 text-left font-semibold">Configuración</th>
+                    <th className="px-3 py-2 text-left font-semibold">{t('Configuración')}</th>
                     <th className="px-3 py-2 text-right font-semibold">Decode t/s</th>
                     <th className="px-3 py-2 text-right font-semibold">Prefill t/s</th>
-                    <th className="px-3 py-2 text-right font-semibold">Tiempo total</th>
+                    <th className="px-3 py-2 text-right font-semibold">{t('Tiempo total')}</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono">
@@ -391,11 +388,11 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
                     ['Baseline (q8_0, ctx=4096)', '25.1', '74.2', '11.2s'],
                     ['+ GPU_LAYERS=99, MAX_LOADED=2', '24.5', '89.9', '12.6s'],
                     ['KV cache q4_0', '25.1', '76.1', '13.5s'],
-                    ['num_ctx=2048 ⭐ mejor total', '25.2', '163.5', '9.2s'],
+                    [`num_ctx=2048 ⭐ ${t('mejor total')}`, '25.2', '163.5', '9.2s'],
                     ['num_ctx=8192', '24.6', '74.9', '11.3s'],
                     ['temperature=0 (greedy)', '24.3', '82.2', '11.4s'],
                     ['NUM_PARALLEL=4, MAX_LOADED=3', '24.5', '83.1', '12.5s'],
-                  ] as const).map(([config, decode, prefill, total], i) => (
+                  ] as [string, string, string, string][]).map(([config, decode, prefill, total], i) => (
                     <tr key={i} className={`border-b last:border-0 ${config.includes('⭐') ? 'bg-primary/5 font-semibold' : 'hover:bg-muted/30'}`}>
                       <td className="px-3 py-1.5 font-sans">{config}</td>
                       <td className="px-3 py-1.5 text-right">{decode}</td>
@@ -407,29 +404,29 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
               </table>
             </div>
             <div className="space-y-1 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-              <p><strong>Conclusión:</strong> el decode speed (~25 t/s) es hardware-bound — el modelo Q4_K_M es el cuello de botella real.</p>
-              <p>La mayor palanca es <code className="bg-muted px-1 rounded">num_ctx</code>: ctx=2048 da <strong>2.2× más prefill</strong> y ahorra ~2s por llamada.</p>
-              <p><code className="bg-muted px-1 rounded">OLLAMA_MAX_LOADED_MODELS</code> evita recargas cuando el pipeline alterna entre modelos.</p>
-              <p>Ollama 0.19+ (backend MLX) reporta +93% decode en Apple Silicon respecto a versiones anteriores.</p>
+              <p><strong>{t('Conclusión')}:</strong> {t('la velocidad de decode (~25 t/s) depende del hardware: el modelo Q4_K_M es el cuello de botella real.')}</p>
+              <p>{t('La mayor palanca es num_ctx: ctx=2048 da 2.2× más prefill y ahorra ~2s por llamada.')}</p>
+              <p>{t('OLLAMA_MAX_LOADED_MODELS evita recargas cuando el pipeline alterna entre modelos.')}</p>
+              <p>{t('Ollama 0.19+ (backend MLX) reporta +93% decode en Apple Silicon respecto a versiones anteriores.')}</p>
             </div>
           </div>
 
           {/* Variables de entorno */}
           <div className="rounded-lg border p-4 space-y-3">
-            <p className="text-sm font-semibold">Variables de entorno — referencia</p>
+            <p className="text-sm font-semibold">{t('Variables de entorno — referencia')}</p>
             <div className="space-y-2 text-xs">
               {([
-                { name: 'OLLAMA_ORIGINS', value: '"*"', desc: 'CORS — permite peticiones desde el navegador (obligatorio)' },
-                { name: 'OLLAMA_KEEP_ALIVE', value: '-1', desc: 'Mantiene el modelo en VRAM indefinidamente. Evita recargas entre passes del pipeline' },
-                { name: 'OLLAMA_KV_CACHE_TYPE', value: 'q8_0', desc: '50% menos VRAM con mínima pérdida de calidad. Requiere Flash Attention' },
-                { name: 'OLLAMA_FLASH_ATTENTION', value: '1', desc: 'Flash Attention: prefill más rápido y menor uso de memoria (Apple Silicon, NVIDIA Pascal+, AMD ROCm)' },
-                { name: 'OLLAMA_NUM_PARALLEL', value: '2', desc: 'Requests concurrentes al mismo modelo sin descargarlo. Usar 1 con 16 GB RAM' },
-                { name: 'OLLAMA_MAX_LOADED_MODELS', value: '2-3', desc: 'Modelos simultáneos en VRAM. 2 con 32 GB, 3 con 64 GB. Evita recargas en pipelines multi-modelo' },
-              ] as const).map(({ name, value, desc }) => (
+                { name: 'OLLAMA_ORIGINS', value: '"*"', desc: msg('CORS — permite peticiones desde el navegador (obligatorio)') },
+                { name: 'OLLAMA_KEEP_ALIVE', value: '-1', desc: msg('Mantiene el modelo en VRAM indefinidamente. Evita recargas entre passes del pipeline') },
+                { name: 'OLLAMA_KV_CACHE_TYPE', value: 'q8_0', desc: msg('50% menos VRAM con mínima pérdida de calidad. Requiere Flash Attention') },
+                { name: 'OLLAMA_FLASH_ATTENTION', value: '1', desc: msg('Flash Attention: prefill más rápido y menor uso de memoria (Apple Silicon, NVIDIA Pascal+, AMD ROCm)') },
+                { name: 'OLLAMA_NUM_PARALLEL', value: '2', desc: msg('Requests concurrentes al mismo modelo sin descargarlo. Usar 1 con 16 GB RAM') },
+                { name: 'OLLAMA_MAX_LOADED_MODELS', value: '2-3', desc: msg('Modelos simultáneos en VRAM. 2 con 32 GB, 3 con 64 GB. Evita recargas en pipelines multi-modelo') },
+              ] as { name: string; value: string; desc: string }[]).map(({ name, value, desc }) => (
                 <div key={name} className="grid grid-cols-[auto_auto_1fr] gap-x-3 items-start py-0.5">
                   <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground whitespace-nowrap">{name}</code>
                   <code className="bg-primary/10 px-1.5 py-0.5 rounded font-mono text-primary whitespace-nowrap">{value}</code>
-                  <span className="text-muted-foreground pt-0.5">{desc}</span>
+                  <span className="text-muted-foreground pt-0.5">{t(desc)}</span>
                 </div>
               ))}
             </div>
@@ -437,16 +434,16 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
 
           {/* Verificar */}
           <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-            <p className="text-sm font-medium">Verificar que funciona</p>
+            <p className="text-sm font-medium">{t('Verificar que funciona')}</p>
             <div className="space-y-1">
               <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/tags</pre>
               <pre className="text-xs text-muted-foreground overflow-x-auto select-all">curl http://localhost:11434/api/ps</pre>
             </div>
-            <p className="text-xs text-muted-foreground"><code className="bg-muted px-1 rounded">/api/tags</code> lista modelos instalados · <code className="bg-muted px-1 rounded">/api/ps</code> muestra el modelo actualmente cargado en VRAM.</p>
+            <p className="text-xs text-muted-foreground">{t('/api/tags lista los modelos instalados · /api/ps muestra el modelo cargado ahora en VRAM.')}</p>
           </div>
 
           <div className="border-t pt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Código fuente:</span>
+            <span>{t('Código fuente:')}</span>
             <a
               href="https://github.com/patchamama/speak-mentor"
               target="_blank"
@@ -472,14 +469,14 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
                   promptTab === p ? 'bg-muted font-medium' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {PROMPT_TAB_LABELS[p]}
+                {t(PROMPT_TAB_LABELS[p])}
               </button>
             ))}
           </div>
 
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
-              Variables disponibles: <code className="bg-muted px-1 rounded">{PROMPT_TAB_VARS[promptTab]}</code>
+              {t('Variables disponibles:')} <code className="bg-muted px-1 rounded">{PROMPT_TAB_VARS[promptTab]}</code>
             </p>
             <textarea
               key={promptTab}
@@ -487,14 +484,14 @@ export function SettingsView({ connectionRequest = 0 }: { connectionRequest?: nu
               value={drafts[promptTab]}
               onChange={(e) => setDraft(promptTab, e.target.value)}
               spellCheck={false}
-              aria-label={`Prompt de ${PROMPT_TAB_LABELS[promptTab]}`}
+              aria-label={t('Prompt de {name}', { name: t(PROMPT_TAB_LABELS[promptTab]) })}
             />
           </div>
 
           <div className="flex gap-3">
-            <Button onClick={onSavePrompts}>Guardar</Button>
+            <Button onClick={onSavePrompts}>{t('Guardar')}</Button>
             <Button variant="outline" onClick={onResetPrompts}>
-              Restablecer original
+              {t('Restablecer original')}
             </Button>
           </div>
         </div>

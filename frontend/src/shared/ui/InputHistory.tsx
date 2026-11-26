@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +32,7 @@ export function InputHistory({ history, onSelect, onRemove }: InputHistoryProps)
           'text-muted-foreground hover:text-foreground hover:bg-muted',
           open && 'bg-muted text-foreground'
         )}
-        aria-label="Historial de entradas"
+        aria-label={t('Historial de entradas')}
         aria-expanded={open}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,7 +40,7 @@ export function InputHistory({ history, onSelect, onRemove }: InputHistoryProps)
           <path d="M3 3v5h5" />
           <path d="M12 7v5l4 2" />
         </svg>
-        Historial ({history.length})
+        {t('Historial')} ({history.length})
       </button>
 
       {open && (
@@ -58,7 +59,7 @@ export function InputHistory({ history, onSelect, onRemove }: InputHistoryProps)
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onRemove(entry) }}
                   className="shrink-0 mt-0.5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Eliminar entrada"
+                  aria-label={t('Eliminar entrada')}
                 >
                   ✕
                 </button>

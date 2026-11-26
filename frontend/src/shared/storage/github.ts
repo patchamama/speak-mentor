@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 // Stores the session document as a JSON file in a repository through the
 // GitHub Contents API. The token only ever travels in the Authorization header.
 import { emptyDocument, parseDocument } from './document'
@@ -36,10 +37,10 @@ function decodeBase64(encoded: string): string {
 }
 
 function describe(status: number): string {
-  if (status === 401) return 'GitHub rechazó el token (401).'
-  if (status === 403) return 'El token no tiene permiso, o se superó el límite de la API (403).'
-  if (status === 404) return 'GitHub no encontró el repositorio o la rama (404).'
-  return `Error de GitHub (${status}).`
+  if (status === 401) return t('GitHub rechazó el token (401).')
+  if (status === 403) return t('El token no tiene permiso, o se superó el límite de la API (403).')
+  if (status === 404) return t('GitHub no encontró el repositorio o la rama (404).')
+  return t('Error de GitHub ({status}).', { status })
 }
 
 function request(
@@ -71,7 +72,7 @@ export function parseGitHubUser(input: string): string {
     .replace(/[/?#].*$/, '')
   const looksLikeOtherUrl = /:\/\/|\.\w+\//.test(input) && !/github\.com\//i.test(input)
   if (looksLikeOtherUrl || (user && !/^[a-z0-9][a-z0-9-]{0,38}$/i.test(user))) {
-    throw new Error('Escribe tu usuario de GitHub o la URL de tu perfil.')
+    throw new Error(t('Escribe tu usuario de GitHub o la URL de tu perfil.'))
   }
   return user
 }
@@ -89,8 +90,8 @@ export interface DataRepo {
 }
 
 const CREATE_ERRORS: Record<number, string> = {
-  403: 'El token no tiene permiso para crear repositorios. Usa un token clásico con el scope "repo", o uno fine-grained con acceso a todos los repositorios y permisos Administration y Contents (Read and write).',
-  422: `El repositorio ${DATA_REPO} ya existe, pero el token no tiene acceso. Agrégalo a los repositorios del token.`,
+  403: msg('El token no tiene permiso para crear repositorios. Usa un token clásico con el scope "repo", o uno fine-grained con acceso a todos los repositorios y permisos Administration y Contents (Read and write).'),
+  422: msg('El repositorio speak-mentor-data ya existe, pero el token no tiene acceso. Agrégalo a los repositorios del token.'),
 }
 
 /** Finds `speak-mentor-data` and creates it as private when missing. Never alters an existing one. */
@@ -113,7 +114,7 @@ export async function ensureDataRepo(
   if (response.status === 404) {
     if (owner.toLowerCase() !== login.toLowerCase()) {
       throw new Error(
-        `No se encontró ${owner}/${DATA_REPO} y el token pertenece a ${login}: solo se puede crear en esa cuenta.`,
+        t('No se encontró {repo} y el token pertenece a {login}: solo se puede crear en esa cuenta.', { repo: `${owner}/${DATA_REPO}`, login }),
       )
     }
     response = await send('/user/repos', {
@@ -128,7 +129,7 @@ export async function ensureDataRepo(
     // A fine-grained token without the permission can answer 404 as well as 403.
     if (!response.ok) {
       const status = response.status === 404 ? 403 : response.status
-      throw new GitHubError(CREATE_ERRORS[status] ?? describe(status), response.status)
+      throw new GitHubError(CREATE_ERRORS[status] ? t(CREATE_ERRORS[status]) : describe(status), response.status)
     }
     created = true
   } else if (!response.ok) {
@@ -137,12 +138,12 @@ export async function ensureDataRepo(
 
   const info = (await response.json()) as RepoInfo
   if (info.permissions?.push === false) {
-    throw new Error('El token no puede escribir en ese repositorio.')
+    throw new Error(t('El token no puede escribir en ese repositorio.'))
   }
   if (!created) {
     const branch = await send(`${repoPath}/branches/${encodeURIComponent(info.default_branch)}`)
     if (branch.status === 404) {
-      throw new Error(`El repositorio ${DATA_REPO} está vacío. Agrega un README y vuelve a intentarlo.`)
+      throw new Error(t('El repositorio {repo} está vacío. Agrega un README y vuelve a intentarlo.', { repo: DATA_REPO }))
     }
     if (!branch.ok) throw new GitHubError(describe(branch.status), branch.status)
   }

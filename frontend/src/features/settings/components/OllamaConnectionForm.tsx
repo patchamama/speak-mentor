@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -36,18 +37,18 @@ export function OllamaConnectionForm() {
 
   const onSubmit = (data: OllamaConfig) => {
     setOllama({ ...data, port: Number(data.port) })
-    toast.success('Configuración guardada')
+    toast.success(t('Configuración guardada'))
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="url">URL</label>
+        <label className="text-sm font-medium" htmlFor="url">{t('URL')}</label>
         <input id="url" className={inputClass} {...register('url', { required: true })} />
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="port">Puerto</label>
+        <label className="text-sm font-medium" htmlFor="port">{t('Puerto')}</label>
         <input
           id="port"
           type="number"
@@ -58,9 +59,9 @@ export function OllamaConnectionForm() {
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium" htmlFor="model">Modelo</label>
+          <label className="text-sm font-medium" htmlFor="model">{t('Modelo')}</label>
           {models.length > 0 && (
-            <span className="text-xs text-muted-foreground">{models.length} instalados</span>
+            <span className="text-xs text-muted-foreground">{t('{count} instalados', { count: models.length })}</span>
           )}
         </div>
 
@@ -81,33 +82,33 @@ export function OllamaConnectionForm() {
 
         {models.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Probá la conexión para cargar los modelos disponibles.
+            {t('Prueba la conexión para cargar los modelos disponibles.')}
           </p>
         )}
       </div>
 
       <div className="space-y-1">
         <label className="text-sm font-medium" htmlFor="keepAlive">
-          Keep-alive del modelo
+          {t('Keep-alive del modelo')}
         </label>
         <select id="keepAlive" className={inputClass} {...register('keepAlive', { valueAsNumber: true })}>
-          <option value={-1}>Indefinido (recomendado para pipeline)</option>
-          <option value={3600}>1 hora</option>
-          <option value={1800}>30 minutos</option>
-          <option value={600}>10 minutos</option>
-          <option value={300}>5 minutos (default Ollama)</option>
-          <option value={0}>Descargar después de cada request</option>
+          <option value={-1}>{t('Indefinido (recomendado para el pipeline)')}</option>
+          <option value={3600}>{t('1 hora')}</option>
+          <option value={1800}>{t('30 minutos')}</option>
+          <option value={600}>{t('10 minutos')}</option>
+          <option value={300}>{t('5 minutos (default Ollama)')}</option>
+          <option value={0}>{t('Descargar después de cada request')}</option>
         </select>
         <p className="text-xs text-muted-foreground">
-          Mantiene el modelo en VRAM entre requests del pipeline. "Indefinido" evita recargas entre passes.
+          {t('Mantiene el modelo en VRAM entre requests del pipeline. "Indefinido" evita recargas entre passes.')}
         </p>
       </div>
 
       <div className="flex gap-3">
-        <Button type="submit">Guardar</Button>
+        <Button type="submit">{t('Guardar')}</Button>
         <Button type="button" variant="outline" onClick={testConnection} disabled={loading}>
           {loading ? <Spinner className="mr-2" /> : null}
-          Probar conexión
+          {t('Probar conexión')}
         </Button>
       </div>
 

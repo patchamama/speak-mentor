@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 // One master password opens every secret stored encrypted in localStorage.
 // The password and the decrypted values live only in the in-memory unlock store;
 // the one exception is the reminder under HINT_KEY.
@@ -59,7 +60,7 @@ export async function unlockVault(password: string): Promise<{ failed: SecretId[
 
 export async function sealSecret(plaintext: string): Promise<EncryptedSecret> {
   const password = useUnlockStore.getState().masterPassword
-  if (!password) throw new Error('Introduce primero la clave maestra.')
+  if (!password) throw new Error(t('Introduce primero la clave maestra.'))
   return encryptSecret(plaintext, password)
 }
 

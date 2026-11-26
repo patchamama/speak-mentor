@@ -1,3 +1,4 @@
+import { dateLocale, msg, t } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/shared/ui/Button'
 import type { Session } from '@/shared/types'
@@ -10,7 +11,7 @@ interface SessionListProps {
   deleting: boolean
 }
 
-const MODE_LABEL: Record<string, string> = { correction: 'Corrección', translation: 'Traducción' }
+const MODE_LABEL: Record<string, string> = { correction: msg('Corrección'), translation: msg('Traducción') }
 const MODE_COLOR: Record<string, string> = {
   correction: 'bg-blue-100 text-blue-700',
   translation: 'bg-green-100 text-green-700',
@@ -18,7 +19,7 @@ const MODE_COLOR: Record<string, string> = {
 
 export function SessionList({ sessions, selectedId, onSelect, onDelete, deleting }: SessionListProps) {
   if (sessions.length === 0) {
-    return <p className="text-sm text-muted-foreground italic p-4">Sin sesiones guardadas.</p>
+    return <p className="text-sm text-muted-foreground italic p-4">{t('Sin sesiones guardadas.')}</p>
   }
 
   return (
@@ -36,11 +37,11 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete, deleting
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', MODE_COLOR[s.mode])}>
-                  {MODE_LABEL[s.mode]}
+                  {t(MODE_LABEL[s.mode])}
                 </span>
                 <span className="text-xs bg-muted px-2 py-0.5 rounded">{s.level}</span>
                 <span className="text-xs text-muted-foreground">
-                  {s.created_at ? new Date(s.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  {s.created_at ? new Date(s.created_at).toLocaleDateString(dateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
               </div>
               <p className="text-sm truncate text-muted-foreground">{s.input_text}</p>
@@ -51,7 +52,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete, deleting
               onClick={(e) => { e.stopPropagation(); onDelete(s.id!) }}
               disabled={deleting}
               className="shrink-0 text-destructive hover:text-destructive"
-              aria-label="Eliminar sesión"
+              aria-label={t('Eliminar sesión')}
             >
               ✕
             </Button>

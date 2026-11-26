@@ -1,6 +1,8 @@
+import { getLanguage, t } from '@/i18n'
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { COMMON_ERRORS_DATA, type CommonErrorCategory, type ReferenceTable } from './data/commonErrors'
+import type { CommonErrorCategory, ReferenceTable } from './data/commonErrors'
+import { getCommonErrors } from './data/localize'
 import { useCommonErrorsExercises } from './hooks/useCommonErrorsExercises'
 import { CommonErrorsExercisePanel } from './components/CommonErrorsExercisePanel'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -21,22 +23,22 @@ function ExampleCard({ example }: { example: CommonErrorCategory['examples'][num
     <div className="rounded-lg border bg-card p-4 space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2">
-          <p className="text-xs font-medium text-destructive/70 mb-1">✗ Incorrecto</p>
+          <p className="text-xs font-medium text-destructive/70 mb-1">✗ {t('Incorrecto')}</p>
           <p className="text-sm font-mono">{example.wrong}</p>
         </div>
         <div className="rounded-md bg-green-500/10 border border-green-500/20 px-3 py-2">
-          <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">✓ Correcto</p>
+          <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">✓ {t('Correcto')}</p>
           <p className="text-sm font-mono">{example.correct}</p>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">{example.explanation}</p>
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1 rounded-md bg-muted px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground mb-1">Regla</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1">{t('Regla')}</p>
           <p className="text-xs font-mono">{example.rule}</p>
         </div>
         <div className="flex-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-3 py-2">
-          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">💡 Truco</p>
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">💡 {t('Truco')}</p>
           <p className="text-xs">{example.tip}</p>
         </div>
       </div>
@@ -85,7 +87,7 @@ interface CategorySectionProps {
 function CategorySection({ category, open, onToggle, onExercisesGenerated }: CategorySectionProps) {
   const colorClass = ERROR_TYPE_COLORS[category.errorType] ?? 'bg-muted text-muted-foreground'
   const { lastCorrectionLevel } = useSettingsStore()
-  const { status, result, error, generate } = useCommonErrorsExercises(category, lastCorrectionLevel)
+  const { status, result, error, generate } = useCommonErrorsExercises(category, lastCorrectionLevel, getLanguage())
 
   const handleGenerate = useCallback(async () => {
     await generate()
@@ -115,7 +117,7 @@ function CategorySection({ category, open, onToggle, onExercisesGenerated }: Cat
             <p className="text-xs text-muted-foreground">{category.subtitle}</p>
           </div>
           {exercisesDone && (
-            <span className="text-xs text-green-600 dark:text-green-400 font-medium">✓ ejercicios generados</span>
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium">✓ {t('ejercicios generados')}</span>
           )}
         </div>
         <span className="text-muted-foreground text-sm">{open ? '▲' : '▼'}</span>
@@ -129,7 +131,7 @@ function CategorySection({ category, open, onToggle, onExercisesGenerated }: Cat
           ))}
           {category.referenceTables && category.referenceTables.length > 0 && (
             <div className="space-y-4 pt-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tablas de referencia</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('Tablas de referencia')}</p>
               {category.referenceTables.map((table, i) => (
                 <RefTable key={i} table={table} />
               ))}
@@ -152,10 +154,10 @@ function CategorySection({ category, open, onToggle, onExercisesGenerated }: Cat
             )}
           >
             {status === 'loading'
-              ? '⏳ Generando ejercicios...'
+              ? `⏳ ${t('Generando ejercicios...')}`
               : status === 'done'
-                ? '↺ Regenerar ejercicios'
-                : '✦ Generar ejercicios'}
+                ? `↺ ${t('Regenerar ejercicios')}`
+                : `✦ ${t('Generar ejercicios')}`}
           </button>
 
           {status === 'error' && error && (
@@ -175,14 +177,15 @@ function CategorySection({ category, open, onToggle, onExercisesGenerated }: Cat
 }
 
 export function CommonErrorsView() {
+  const categories = getCommonErrors(getLanguage())
   const [filter, setFilter] = useState<string>('all')
   const [openIds, setOpenIds] = useState<Set<string>>(
-    () => new Set(COMMON_ERRORS_DATA.map((c) => c.id))
+    () => new Set(categories.map((c) => c.id))
   )
 
-  const errorTypes = ['all', ...new Set(COMMON_ERRORS_DATA.map((c) => c.errorType))]
-  const filtered = filter === 'all' ? COMMON_ERRORS_DATA : COMMON_ERRORS_DATA.filter((c) => c.errorType === filter)
-  const totalExamples = COMMON_ERRORS_DATA.reduce((acc, c) => acc + c.examples.length, 0)
+  const errorTypes = ['all', ...new Set(categories.map((c) => c.errorType))]
+  const filtered = filter === 'all' ? categories : categories.filter((c) => c.errorType === filter)
+  const totalExamples = categories.reduce((acc, c) => acc + c.examples.length, 0)
 
   const toggleOpen = useCallback((id: string) => {
     setOpenIds((prev) => {
@@ -195,8 +198,8 @@ export function CommonErrorsView() {
 
   const allOpen = openIds.size === filtered.length
   const toggleAll = useCallback(() => {
-    setOpenIds(allOpen ? new Set() : new Set(COMMON_ERRORS_DATA.map((c) => c.id)))
-  }, [allOpen])
+    setOpenIds(allOpen ? new Set() : new Set(categories.map((c) => c.id)))
+  }, [allOpen, categories])
 
   // When exercises are generated for a category, collapse all other categories
   const handleExercisesGenerated = useCallback((categoryId: string) => {
@@ -207,21 +210,20 @@ export function CommonErrorsView() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Errores frecuentes</h2>
+          <h2 className="text-2xl font-bold">{t('Errores frecuentes')}</h2>
           <p className="text-muted-foreground mt-1">
-            Los errores más comunes de hispanohablantes al aprender alemán — {totalExamples} ejemplos
-            con explicación, regla y truco mnemotécnico.
+            {t('Los errores más comunes de hispanohablantes al aprender alemán: {count} ejemplos con explicación, regla y truco mnemotécnico.', { count: totalExamples })}
           </p>
         </div>
         <button
           onClick={toggleAll}
           className="shrink-0 text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-colors"
         >
-          {allOpen ? '▲ Contraer todo' : '▼ Expandir todo'}
+          {allOpen ? `▲ ${t('Contraer todo')}` : `▼ ${t('Expandir todo')}`}
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo de error">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t('Filtrar por tipo de error')}>
         {errorTypes.map((type) => {
           const active = filter === type
           const colorClass = type !== 'all' ? (ERROR_TYPE_COLORS[type] ?? '') : ''
@@ -238,7 +240,7 @@ export function CommonErrorsView() {
                   : 'border-border text-muted-foreground hover:border-foreground/40',
               )}
             >
-              {type === 'all' ? 'Todos' : type}
+              {type === 'all' ? t('Todos') : type}
             </button>
           )
         })}

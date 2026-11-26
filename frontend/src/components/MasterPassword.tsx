@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useId, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
@@ -31,7 +32,7 @@ function PasswordForm({
     try {
       await onSubmit(password)
     } catch {
-      setError('Contraseña incorrecta')
+      setError(t('Contraseña incorrecta'))
     } finally {
       setBusy(false)
     }
@@ -66,16 +67,14 @@ export function MasterPasswordSection() {
   const hasSecrets = useHasStoredSecrets()
 
   return (
-    <section aria-label="Clave maestra" className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
-      <h3 className="text-sm font-semibold">Clave maestra</h3>
+    <section aria-label={t('Clave maestra')} className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+      <h3 className="text-sm font-semibold">{t('Clave maestra')}</h3>
       <p className="text-xs text-muted-foreground">
-        Cifra tus API keys y tu token de GitHub en este navegador. La clave completa no se guarda
-        (se pierde al cerrar o recargar la pestaña); solo sus 3 últimos caracteres, como
-        recordatorio. Usa una clave larga. Ollama y el modelo del backend no la necesitan.
+        {t('Cifra tus API keys y tu token de GitHub en este navegador. La clave completa no se guarda (se pierde al cerrar o recargar la pestaña); solo sus 3 últimos caracteres, como recordatorio. Usa una clave larga. Ollama y el modelo del backend no la necesitan.')}
       </p>
       {unlocked ? (
         <div className="flex items-center justify-between gap-3 text-sm">
-          <p>🔓 Claves desbloqueadas</p>
+          <p>🔓 {t('Claves desbloqueadas')}</p>
           <Button
             type="button"
             size="sm"
@@ -85,7 +84,7 @@ export function MasterPasswordSection() {
               void refreshHistory()
             }}
           >
-            Bloquear todo
+            {t('Bloquear todo')}
           </Button>
         </div>
       ) : hasSecrets ? (
@@ -104,19 +103,19 @@ function UnlockForm() {
     <div className="space-y-2">
       {hint && (
         <p className="text-sm">
-          Recordatorio: tu clave termina en <code className="bg-muted px-1 rounded">{hint}</code>
+          {t('Recordatorio: tu clave termina en')} <code className="bg-muted px-1 rounded">{hint}</code>
         </p>
       )}
       <PasswordForm
-        label="Clave maestra"
-        submitLabel="Desbloquear"
+        label={t('Clave maestra')}
+        submitLabel={t('Desbloquear')}
         onSubmit={async (password) => {
           const { failed } = await unlockVault(password)
           void refreshHistory()
           if (failed.length > 0) {
-            toast.warning(`Usan otra contraseña: ${failed.join(', ')}.`)
+            toast.warning(t('Usan otra contraseña: {names}.', { names: failed.join(', ') }))
           } else {
-            toast.success('Claves desbloqueadas')
+            toast.success(t('Claves desbloqueadas'))
           }
         }}
       />
@@ -140,8 +139,8 @@ function CreateForm() {
       }}
     >
       {[
-        { key: 'new', label: `Clave maestra (mín ${MIN_PASSWORD_LENGTH} caracteres)`, value: password, set: setPassword },
-        { key: 'confirm', label: 'Repetir la clave', value: confirm, set: setConfirm },
+        { key: 'new', label: t('Clave maestra (mín {count} caracteres)', { count: MIN_PASSWORD_LENGTH }), value: password, set: setPassword },
+        { key: 'confirm', label: t('Repetir la clave'), value: confirm, set: setConfirm },
       ].map((field) => (
         <div key={field.key} className="space-y-1">
           <label className="block text-sm font-medium" htmlFor={`${id}-${field.key}`}>{field.label}</label>
@@ -156,9 +155,9 @@ function CreateForm() {
         </div>
       ))}
       {confirm && confirm !== password && (
-        <p className="text-xs text-destructive">Las claves no coinciden</p>
+        <p className="text-xs text-destructive">{t('Las claves no coinciden')}</p>
       )}
-      <Button type="submit" disabled={!valid}>Activar clave maestra</Button>
+      <Button type="submit" disabled={!valid}>{t('Activar clave maestra')}</Button>
     </form>
   )
 }
@@ -177,13 +176,13 @@ export function LockedSecret({
 
   return (
     <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-xs">
-      <p className="font-semibold">🔒 {name} bloqueado</p>
+      <p className="font-semibold">🔒 {t('{name} bloqueado', { name })}</p>
       {unlocked ? (
         <>
-          <p className="text-muted-foreground">Se cifró con otra contraseña.</p>
+          <p className="text-muted-foreground">{t('Se cifró con otra contraseña.')}</p>
           <PasswordForm
-            label={`Contraseña anterior de ${name}`}
-            submitLabel="Migrar"
+            label={t('Contraseña anterior de {name}', { name })}
+            submitLabel={t('Migrar')}
             onSubmit={async (password) => {
               await migrateSecret(id, password)
               void refreshHistory()
@@ -192,11 +191,11 @@ export function LockedSecret({
         </>
       ) : (
         <p className="text-muted-foreground">
-          Introduce la clave maestra arriba.
+          {t('Introduce la clave maestra arriba.')}
         </p>
       )}
       <Button type="button" size="sm" variant="outline" onClick={onForget}>
-        Olvidar y configurar de nuevo
+        {t('Olvidar y configurar de nuevo')}
       </Button>
     </div>
   )
@@ -206,5 +205,5 @@ export function LockedSecret({
 export function VaultRequiredHint() {
   const unlocked = useUnlockStore((s) => s.masterPassword !== null)
   if (unlocked) return null
-  return <p className="text-xs text-muted-foreground">Primero activa o introduce la clave maestra arriba.</p>
+  return <p className="text-xs text-muted-foreground">{t('Primero activa o introduce la clave maestra arriba.')}</p>
 }

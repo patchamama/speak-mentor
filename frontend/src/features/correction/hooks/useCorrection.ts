@@ -1,3 +1,4 @@
+import { getLanguage, t } from '@/i18n'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
@@ -33,8 +34,8 @@ export function useCorrection(): UseCorrectionReturn {
     if (!provider) {
       toast.error(
         locked
-          ? `${PROVIDER_LABELS[locked]} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.`
-          : 'Configurá un proveedor de LLM en Configuración → Conexión y almacenamiento.',
+          ? t('{name} está bloqueado o sin configurar: introduce la clave maestra en Configuración → Conexión y almacenamiento.', { name: PROVIDER_LABELS[locked] })
+          : t('Configura un proveedor de LLM en Configuración → Conexión y almacenamiento.'),
       )
       return
     }
@@ -47,6 +48,7 @@ export function useCorrection(): UseCorrectionReturn {
       const prompt = buildPrompt({
         mode: 'correction', text, level,
         systemOverride: prompts.correctionSystem,
+        explanationLang: getLanguage(),
         modelParams,
       })
       const response = await correctText(provider, prompt, text)
@@ -54,9 +56,9 @@ export function useCorrection(): UseCorrectionReturn {
     } catch (err) {
       if (err instanceof OllamaParseError) {
         setRawError(err.rawOutput)
-        toast.error('El modelo devolvió una respuesta inválida. Ver detalle abajo.')
+        toast.error(t('El modelo devolvió una respuesta inválida. Ver detalle abajo.'))
       } else {
-        toast.error('Error al conectar con el proveedor. Verificá la configuración.')
+        toast.error(t('Error al conectar con el proveedor. Revisa la configuración.'))
       }
     } finally {
       setLoading(false)
@@ -91,9 +93,9 @@ export function useCorrection(): UseCorrectionReturn {
         errors,
       })
       setSavedSessionId(session_id)
-      toast.success('Sesión guardada')
+      toast.success(t('Sesión guardada'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al guardar la sesión')
+      toast.error(err instanceof Error ? err.message : t('Error al guardar la sesión'))
     } finally {
       setSaving(false)
     }

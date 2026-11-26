@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import type { VocabCard } from '../hooks/useCorrectionPipeline'
 import { cn } from '@/lib/utils'
 
@@ -6,11 +7,11 @@ type NounInfoType = NonNullable<NonNullable<VocabCard['grammar']>['noun_info']>
 type AdjInfoType = NonNullable<NonNullable<VocabCard['grammar']>['adjective_info']>
 
 const POS_LABELS: Record<string, string> = {
-  verb: 'Verbo',
-  noun: 'Sustantivo',
-  adjective: 'Adjetivo',
-  adverb: 'Adverbio',
-  preposition_collocation: 'Preposición',
+  verb: msg('Verbo'),
+  noun: msg('Sustantivo'),
+  adjective: msg('Adjetivo'),
+  adverb: msg('Adverbio'),
+  preposition_collocation: msg('Preposición'),
 }
 
 const POS_COLORS: Record<string, string> = {
@@ -31,7 +32,7 @@ function VerbInfo({ info }: { info: VerbInfoType }) {
       {info.separable && (
         <div className="col-span-2">
           <span className="text-muted-foreground">Trennbar:</span>{' '}
-          <span className="text-amber-600 font-semibold">sí — prefijo: {info.prefix}</span>
+          <span className="text-amber-600 font-semibold">{t('sí — prefijo: {prefix}', { prefix: info.prefix ?? '' })}</span>
         </div>
       )}
       {info.vowel_change && (
@@ -74,7 +75,7 @@ export function VocabularyPanel({ cards }: { cards: VocabCard[] }) {
   return (
     <div className="space-y-4">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Vocabulario ({cards.length} palabras)
+        {t('Vocabulario ({count} palabras)', { count: cards.length })}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {cards.map((card, i) => {
@@ -91,7 +92,7 @@ export function VocabularyPanel({ cards }: { cards: VocabCard[] }) {
                   <p className="text-sm text-muted-foreground">{card.translation}</p>
                 </div>
                 <span className={cn('text-xs px-2 py-0.5 rounded-full shrink-0', POS_COLORS[card.part_of_speech] ?? 'bg-muted')}>
-                  {POS_LABELS[card.part_of_speech] ?? card.part_of_speech}
+                  {POS_LABELS[card.part_of_speech] ? t(POS_LABELS[card.part_of_speech]) : card.part_of_speech}
                 </span>
               </div>
 
@@ -101,7 +102,7 @@ export function VocabularyPanel({ cards }: { cards: VocabCard[] }) {
 
               {card.collocation && (
                 <div className="rounded-md bg-muted px-3 py-2">
-                  <p className="text-xs text-muted-foreground mb-0.5">Ejemplo</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('Ejemplo')}</p>
                   <p className="text-sm font-mono italic">{card.collocation}</p>
                 </div>
               )}

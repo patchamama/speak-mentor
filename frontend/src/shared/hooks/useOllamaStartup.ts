@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { fetchOllamaModels } from '@/shared/ollama/client'
@@ -62,7 +63,7 @@ export function useOllamaStartup(): { ollamaStatus: OllamaStatus } {
       // Persist the working port if different from configured
       if (result.port !== ollama.port) {
         setOllama({ port: result.port })
-        toast.info(`Ollama found on port ${result.port} — settings updated.`)
+        toast.info(t('Ollama encontrado en el puerto {port}: configuración actualizada.', { port: result.port }))
       }
 
       // Resolve best model
@@ -70,7 +71,7 @@ export function useOllamaStartup(): { ollamaStatus: OllamaStatus } {
       const resolved = resolveModel(names, ollama.model)
       if (resolved) {
         setOllama({ model: resolved })
-        toast.info(`Modelo cambiado a "${resolved}" — "${ollama.model}" no está instalado.`)
+        toast.info(t('Modelo cambiado a "{next}": "{previous}" no está instalado.', { next: resolved, previous: ollama.model }))
       }
     }
 

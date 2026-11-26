@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useEffect, useState } from 'react'
 import { fetchOllamaModels, type OllamaModel } from '@/shared/ollama/client'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -23,7 +24,7 @@ export function useOllamaModels(): UseOllamaModelsReturn {
       setModels(result)
     } catch (err) {
       setError(
-        'No se pudo conectar con Ollama. Verificá que esté corriendo con OLLAMA_ORIGINS=* y que la URL/puerto sean correctos.'
+        t('No se pudo conectar con Ollama. Comprueba que esté funcionando con OLLAMA_ORIGINS=* y que la URL y el puerto sean correctos.')
       )
     } finally {
       setLoading(false)

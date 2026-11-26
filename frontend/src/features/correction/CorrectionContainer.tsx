@@ -1,3 +1,4 @@
+import { getLanguage, msg, t } from '@/i18n'
 import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
@@ -19,22 +20,22 @@ import { useCorrectionPipeline } from './hooks/useCorrectionPipeline'
 import type { CEFRLevel, CorrectionPassId } from '@/shared/types'
 
 const ERROR_TYPE_LABELS: Record<string, string> = {
-  gender: 'Género',
-  case: 'Caso',
-  declension: 'Declinación',
-  conjugation: 'Conjugación',
-  separable_verb: 'V. Separable',
-  preposition: 'Preposición',
-  word_order: 'Orden',
-  spelling: 'Ortografía',
-  punctuation: 'Puntuación',
-  vocabulary: 'Vocabulario',
-  style: 'Estilo',
-  agreement: 'Concordancia',
-  tense: 'Tiempo',
-  mood: 'Modo',
-  voice: 'Voz',
-  particle: 'Partícula',
+  gender: msg('Género'),
+  case: msg('Caso'),
+  declension: msg('Declinación'),
+  conjugation: msg('Conjugación'),
+  separable_verb: msg('V. Separable'),
+  preposition: msg('Preposición'),
+  word_order: msg('Orden'),
+  spelling: msg('Ortografía'),
+  punctuation: msg('Puntuación'),
+  vocabulary: msg('Vocabulario'),
+  style: msg('Estilo'),
+  agreement: msg('Concordancia'),
+  tense: msg('Tiempo'),
+  mood: msg('Modo'),
+  voice: msg('Voz'),
+  particle: msg('Partícula'),
 }
 
 export function CorrectionContainer() {
@@ -57,7 +58,7 @@ export function CorrectionContainer() {
     setActiveErrorIdx(null)
     setSavedSessionId(null)
     push(text)
-    run(text, level, 'es', advanced ? pipeline.passes : ['correction'])
+    run(text, level, getLanguage(), advanced ? pipeline.passes : ['correction'])
   }, [text, level, isRunning, run, push, advanced, pipeline.passes])
 
   const handleKeyDown = useCallback(
@@ -71,8 +72,8 @@ export function CorrectionContainer() {
     (pass: CorrectionPassId) => {
       const correctionData = state.correction.data
       if (!correctionData || isRunning) return
-      if (pass === 'vocabulary') rerunVocabulary(correctionData, text, level)
-      if (pass === 'exercises') rerunExercises(correctionData, level)
+      if (pass === 'vocabulary') rerunVocabulary(correctionData, text, level, getLanguage())
+      if (pass === 'exercises') rerunExercises(correctionData, level, getLanguage())
     },
     [state.correction.data, text, level, isRunning, rerunVocabulary, rerunExercises],
   )
@@ -107,9 +108,9 @@ export function CorrectionContainer() {
         })),
       })
       setSavedSessionId(session_id)
-      toast.success('Sesión guardada en el historial')
+      toast.success(t('Sesión guardada en el historial'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al guardar la sesión')
+      toast.error(err instanceof Error ? err.message : t('Error al guardar la sesión'))
     } finally {
       setSaving(false)
     }
@@ -137,7 +138,7 @@ export function CorrectionContainer() {
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">Corrección</h2>
+            <h2 className="text-lg font-semibold">{t('Corrección')}</h2>
             <InputHistory
               history={history}
               onSelect={(entry) => { setText(entry); setActiveErrorIdx(null) }}
@@ -148,24 +149,24 @@ export function CorrectionContainer() {
         </div>
         <textarea
           className="w-full min-h-[140px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Escribe en alemán... (Cmd+Enter para corregir)"
+          placeholder={t('Escribe en alemán... (Cmd+Enter para corregir)')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           maxLength={2000}
-          aria-label="Texto en alemán para corregir"
+          aria-label={t('Texto en alemán para corregir')}
         />
         <div className="flex items-center gap-3 flex-wrap">
           <Button onClick={handleSubmit} disabled={isRunning || !text.trim()} aria-busy={isRunning}>
-            {isRunning ? <><Spinner className="mr-2" />Analizando...</> : 'Corregir'}
+            {isRunning ? <><Spinner className="mr-2" />{t('Analizando...')}</> : t('Corregir')}
           </Button>
           {state.correction.status === 'done' && !savedSessionId && (
             <Button variant="outline" onClick={handleSave} disabled={saving}>
-              {saving ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar'}
+              {saving ? <><Spinner className="mr-2" />{t('Guardando...')}</> : t('Guardar')}
             </Button>
           )}
           {savedSessionId && (
-            <span className="text-sm text-muted-foreground">✓ Guardado (#{savedSessionId})</span>
+            <span className="text-sm text-muted-foreground">{t('✓ Guardado (#{id})', { id: savedSessionId })}</span>
           )}
           <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
             <div
@@ -179,7 +180,7 @@ export function CorrectionContainer() {
               <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform ${advanced ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
             <span className={advanced ? 'text-foreground' : 'text-muted-foreground'}>
-              Análisis avanzado
+              {t('Análisis avanzado')}
             </span>
             {advanced && pipeline.passes.length > 1 && (
               <span className="text-xs text-muted-foreground">
@@ -201,7 +202,7 @@ export function CorrectionContainer() {
       {/* Correction error */}
       {state.correction.status === 'error' && (
         <div className="rounded-md border border-destructive p-4">
-          <p className="text-sm text-destructive font-medium">Error en la corrección</p>
+          <p className="text-sm text-destructive font-medium">{t('Error en la corrección')}</p>
           <p className="text-xs text-muted-foreground mt-1">{state.correction.error}</p>
         </div>
       )}
@@ -210,7 +211,7 @@ export function CorrectionContainer() {
       {correctionResult && (
         <div className="space-y-6" aria-live="polite">
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Nivel detectado:</span>
+            <span className="text-muted-foreground">{t('Nivel detectado:')}</span>
             <span className="font-medium">{correctionResult.level_assessment.detected_level}</span>
             {correctionResult.level_assessment.gap_notes && (
               <span className="text-muted-foreground">— {correctionResult.level_assessment.gap_notes}</span>
@@ -218,7 +219,7 @@ export function CorrectionContainer() {
           </div>
 
           <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Texto corregido</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Texto corregido')}</p>
             <p className="text-sm leading-relaxed">{correctionResult.corrected}</p>
           </div>
 
@@ -229,7 +230,7 @@ export function CorrectionContainer() {
                 const bg = colorClass.split(' ')[0]
                 return (
                   <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${bg}`}>
-                    {ERROR_TYPE_LABELS[type] ?? type}
+                    {ERROR_TYPE_LABELS[type] ? t(ERROR_TYPE_LABELS[type]) : type}
                   </span>
                 )
               })}
@@ -238,7 +239,7 @@ export function CorrectionContainer() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original con errores</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Original con errores')}</p>
               <div className="rounded-lg border p-4">
                 <ErrorHighlight
                   text={text}
@@ -250,7 +251,7 @@ export function CorrectionContainer() {
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Errores ({correctionResult.summary.error_count})
+                {t('Errores')} ({correctionResult.summary.error_count})
               </p>
               <ErrorPanel
                 errors={correctionResult.errors}
@@ -273,7 +274,7 @@ export function CorrectionContainer() {
             <div key={i} className="rounded-lg border p-4 space-y-4">
               {state.vocabularyHistory.length > 1 && (
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Vocabulario — generación {i + 1}
+                  {t('Vocabulario — generación {n}', { n: i + 1 })}
                 </p>
               )}
               <VocabularyPanel cards={result.vocab_cards} />
@@ -282,7 +283,7 @@ export function CorrectionContainer() {
           {state.vocabulary.status === 'running' && (
             <div className="rounded-lg border p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner className="h-4 w-4" /> Analizando vocabulario...
+                <Spinner className="h-4 w-4" /> {t('Analizando vocabulario...')}
               </div>
             </div>
           )}
@@ -296,7 +297,7 @@ export function CorrectionContainer() {
             <div key={i} className="rounded-lg border p-4 space-y-4">
               {state.exercisesHistory.length > 1 && (
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Ejercicios — generación {i + 1}
+                  {t('Ejercicios — generación {n}', { n: i + 1 })}
                 </p>
               )}
               <ExercisesPanel
@@ -308,7 +309,7 @@ export function CorrectionContainer() {
           {state.exercises.status === 'running' && (
             <div className="rounded-lg border p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Spinner className="h-4 w-4" /> Generando ejercicios...
+                <Spinner className="h-4 w-4" /> {t('Generando ejercicios...')}
               </div>
             </div>
           )}

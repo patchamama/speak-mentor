@@ -1,3 +1,4 @@
+import { msg, t } from '@/i18n'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
@@ -16,10 +17,10 @@ const inputClass =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 const MODE_LABELS: Record<StorageMode, string> = {
-  auto: 'Automático (backend → GitHub → navegador)',
-  backend: 'Backend Flask',
-  github: 'Repositorio de GitHub (JSON)',
-  browser: 'Solo este navegador',
+  auto: msg('Automático (backend → GitHub → navegador)'),
+  backend: msg('Backend Flask'),
+  github: msg('Repositorio de GitHub (JSON)'),
+  browser: msg('Solo este navegador'),
 }
 
 export function StorageSettings() {
@@ -41,14 +42,14 @@ export function StorageSettings() {
     setToken(null)
     setGitHub(null)
     void refreshHistory()
-    toast.info('Token de GitHub olvidado')
+    toast.info(t('Token de GitHub olvidado'))
   }
 
   return (
     <div className="space-y-5">
       <div className="space-y-1">
         <label className="text-sm font-medium" htmlFor="storage-mode">
-          Dónde guardar el historial
+          {t('Dónde guardar el historial')}
         </label>
         <select
           id="storage-mode"
@@ -60,12 +61,13 @@ export function StorageSettings() {
           }}
         >
           {(Object.keys(MODE_LABELS) as StorageMode[]).map((m) => (
-            <option key={m} value={m}>{MODE_LABELS[m]}</option>
+            <option key={m} value={m}>{t(MODE_LABELS[m])}</option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          Activo ahora: {STORAGE_LABELS[target]}{locked ? ' (token bloqueado)' : ''}. Cada destino
-          tiene su propio historial; cambiar de destino no mueve los datos.
+          {t('Activo ahora: {target}.', { target: t(STORAGE_LABELS[target]) })}
+          {locked ? ` ${t('(token bloqueado)')}` : ''}{' '}
+          {t('Cada destino tiene su propio historial; cambiar de destino no mueve los datos.')}
         </p>
       </div>
 
@@ -77,20 +79,19 @@ export function StorageSettings() {
             {github.owner}/{github.repo} · {github.branch} · {github.path}
           </p>
           {!unlocked && (
-            <LockedSecret id="github" name="Token de GitHub" onForget={forget} />
+            <LockedSecret id="github" name={t('Token de GitHub')} onForget={forget} />
           )}
           <p className="text-xs text-muted-foreground">
-            Si la conexión falla (token vencido, revocado o sin permisos), cambia el token. El
-            actual se conserva hasta que el nuevo funcione.
+            {t('Si la conexión falla (token vencido, revocado o sin permisos), cambia el token. El actual se conserva hasta que el nuevo funcione.')}
           </p>
           <div className="flex flex-wrap gap-3">
             {!changingToken && (
               <Button type="button" variant="outline" onClick={() => setChangingToken(true)}>
-                Cambiar token
+                {t('Cambiar token')}
               </Button>
             )}
             {unlocked && (
-              <Button type="button" variant="outline" onClick={forget}>Olvidar token</Button>
+              <Button type="button" variant="outline" onClick={forget}>{t('Olvidar token')}</Button>
             )}
           </div>
           {changingToken && (
@@ -142,11 +143,11 @@ function GitHubSetup({
       onSaved({ ...repo.config, encryptedToken }, token.trim())
       toast.success(
         repo.created
-          ? `Repositorio privado ${repo.config.owner}/${repo.config.repo} creado`
-          : `Usando ${repo.config.owner}/${repo.config.repo}`,
+          ? t('Repositorio privado {name} creado', { name: `${repo.config.owner}/${repo.config.repo}` })
+          : t('Usando {name}', { name: `${repo.config.owner}/${repo.config.repo}` }),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo preparar el repositorio')
+      setError(err instanceof Error ? err.message : t('No se pudo preparar el repositorio'))
     } finally {
       setBusy(false)
     }
@@ -154,23 +155,19 @@ function GitHubSetup({
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-lg border p-4">
-      <p className="text-sm font-medium">{onCancel ? 'Nuevo token de GitHub' : 'Guardar en tu GitHub'}</p>
+      <p className="text-sm font-medium">{onCancel ? t('Nuevo token de GitHub') : t('Guardar en tu GitHub')}</p>
       <p className="text-xs text-muted-foreground">
-        Se usa el repositorio <strong>{DATA_REPO}</strong>; si no existe, se crea como privado.
-        Para crearlo, el token necesita ser clásico con el scope <code>repo</code>, o fine-grained
-        con acceso a todos los repositorios y permisos Administration y Contents (Read and write).
-        Si ya creaste el repositorio, basta un token fine-grained limitado a él con Contents. El
-        token se guarda cifrado y solo se envía a api.github.com.
+        {t('Se usa el repositorio {repo}; si no existe, se crea como privado. Para crearlo, el token necesita ser clásico con el scope "repo", o fine-grained con acceso a todos los repositorios y permisos Administration y Contents (Read and write). Si ya creaste el repositorio, basta un token fine-grained limitado a él con Contents. El token se guarda cifrado y solo se envía a api.github.com.', { repo: DATA_REPO })}
       </p>
 
       <div className="space-y-1">
         <label className="text-sm font-medium" htmlFor="gh-user">
-          Usuario o URL de GitHub (opcional)
+          {t('Usuario o URL de GitHub (opcional)')}
         </label>
         <input
           id="gh-user"
           className={inputClass}
-          placeholder="https://github.com/tu-usuario"
+          placeholder={t('https://github.com/tu-usuario')}
           value={user}
           onChange={(e) => {
             setUser(e.target.value)
@@ -180,7 +177,7 @@ function GitHubSetup({
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="gh-token">Token de GitHub</label>
+        <label className="text-sm font-medium" htmlFor="gh-token">{t('Token de GitHub')}</label>
         <input
           id="gh-token"
           type="password"
@@ -203,18 +200,17 @@ function GitHubSetup({
             checked={acceptPublic}
             onChange={(e) => setAcceptPublic(e.target.checked)}
           />
-          {DATA_REPO} es PÚBLICO: cualquiera podrá leer tus textos y errores. Hazlo privado en
-          GitHub, o marca la casilla y vuelve a guardar si lo aceptas.
+          {t('{repo} es PÚBLICO: cualquiera podrá leer tus textos y errores. Hazlo privado en GitHub, o marca la casilla y vuelve a guardar si lo aceptas.', { repo: DATA_REPO })}
         </label>
       )}
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={!token.trim() || !vaultOpen || busy}>
           {busy ? <Spinner className="mr-2" /> : null}
-          Conectar GitHub
+          {t('Conectar GitHub')}
         </Button>
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button type="button" variant="outline" onClick={onCancel}>{t('Cancelar')}</Button>
         )}
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

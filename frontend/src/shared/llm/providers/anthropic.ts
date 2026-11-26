@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import ky from 'ky'
 import type { BuiltPrompt } from '@/shared/ollama/promptBuilder'
 import { enqueue } from '../queue'
@@ -50,7 +51,7 @@ export class AnthropicProvider implements LLMProvider {
     }).json<AnthropicMessageResponse>()
 
     if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') {
-      throw new Error(`Anthropic no completó la respuesta (${response.stop_reason}).`)
+      throw new Error(t('Anthropic no completó la respuesta ({reason}).', { reason: response.stop_reason }))
     }
     return stripCodeFence(response.content.find((c) => c.type === 'text')?.text ?? '')
   }

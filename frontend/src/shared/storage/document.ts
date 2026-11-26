@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 // Backend-equivalent session queries over a single JSON document.
 import type { DbDocument, DocumentAdapter, SessionStore, StoredSession } from './types'
 
@@ -11,11 +12,11 @@ export function parseDocument(raw: string): DbDocument {
   try {
     value = JSON.parse(raw)
   } catch {
-    throw new Error('El archivo de datos no es un JSON válido. No se modificó.')
+    throw new Error(t('El archivo de datos no es un JSON válido. No se modificó.'))
   }
   const doc = value as Partial<DbDocument> | null
   if (!doc || doc.version !== 1 || typeof doc.nextId !== 'number' || !Array.isArray(doc.sessions)) {
-    throw new Error('El archivo de datos no tiene el formato de Speak Mentor. No se modificó.')
+    throw new Error(t('El archivo de datos no tiene el formato de Speak Mentor. No se modificó.'))
   }
   return doc as DbDocument
 }
@@ -71,7 +72,7 @@ export function createDocumentStore(adapter: DocumentAdapter): SessionStore {
 
     async getSession(id) {
       const found = (await adapter.read()).sessions.find((s) => s.id === id)
-      if (!found) throw new Error(`Sesión ${id} no encontrada`)
+      if (!found) throw new Error(t('Sesión {id} no encontrada', { id }))
       return found
     },
 

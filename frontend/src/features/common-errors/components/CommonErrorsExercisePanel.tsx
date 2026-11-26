@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type {
@@ -48,11 +49,11 @@ function ChooseOneCard({ exercise, index }: { exercise: ChooseOneExercise; index
       {revealed && (
         <div className="rounded-md bg-blue-500/10 border border-blue-500/20 px-3 py-2 space-y-1">
           <p className="text-xs font-medium text-blue-700 dark:text-blue-400">
-            {selected === exercise.answer ? '✓ Correcto' : `✗ Incorrecto — respuesta: ${exercise.answer}`}
+            {selected === exercise.answer ? t('✓ Correcto') : t('✗ Incorrecto — respuesta: {answer}', { answer: exercise.answer })}
           </p>
           <p className="text-xs">{exercise.answer_explanation}</p>
           {exercise.rule_reference && (
-            <p className="text-xs text-muted-foreground font-mono">Regla: {exercise.rule_reference}</p>
+            <p className="text-xs text-muted-foreground font-mono">{t('Regla')}: {exercise.rule_reference}</p>
           )}
         </div>
       )}
@@ -141,7 +142,7 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
         </div>
         {answered > 0 && (
           <span className="text-xs font-medium text-muted-foreground">
-            {correct} / {totalInputs} correctos
+            {t('{correct} / {total} correctos', { correct, total: totalInputs })}
           </span>
         )}
       </div>
@@ -234,7 +235,7 @@ export function CommonErrorsExercisePanel({ result }: { result: CommonErrorsExer
   return (
     <div className="space-y-4 pt-2">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Ejercicios generados ({result.exercises.length})
+        {t('Ejercicios generados')} ({result.exercises.length})
       </p>
       <div className="space-y-3">
         {result.exercises.map((ex, i) => (

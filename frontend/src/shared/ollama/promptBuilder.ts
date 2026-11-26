@@ -4,6 +4,7 @@ import { TRANSLATION_SYSTEM_TEMPLATE } from './templates/translation-system'
 import { VOCABULARY_SYSTEM_TEMPLATE } from './templates/vocabulary-system'
 import { EXERCISES_SYSTEM_TEMPLATE } from './templates/exercises-system'
 import { VERIFICATION_SYSTEM_TEMPLATE } from './templates/verification-system'
+import { GRAMMAR_EXPLANATION_SYSTEM_TEMPLATE } from './templates/grammar-explanation-system'
 import { COMMON_ERRORS_EXERCISES_SYSTEM_TEMPLATE } from './templates/common-errors-exercises-system'
 import { DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
 import type { CommonErrorCategory } from '@/features/common-errors/data/commonErrors'
@@ -62,7 +63,16 @@ interface CommonErrorsExercisesPromptInput {
   modelParams?: Partial<ModelParams>
 }
 
+interface GrammarExplanationPromptInput {
+  mode: 'grammarExplanation'
+  error: { type: string; original: string; correction: string; explanation: string; rule_reference?: string }
+  level: CEFRLevel
+  explanationLang?: Lang
+  modelParams?: Partial<ModelParams>
+}
+
 export type PromptInput =
+  | GrammarExplanationPromptInput
   | CorrectionPromptInput
   | VocabularyPromptInput
   | ExercisesPromptInput
@@ -139,6 +149,15 @@ export function buildPrompt(input: PromptInput): BuiltPrompt {
     return {
       system,
       user: `LEVEL: ${input.level}\nCORRECTED_TEXT: ${input.correctedText}\nERRORS:\n${errorsJson}\nEXPLANATION_LANG: ${explanationLang}`,
+      ...baseOpts,
+    }
+  }
+
+  if (input.mode === 'grammarExplanation') {
+    const { type, original, correction, explanation, rule_reference } = input.error
+    return {
+      system: applyBaseVars(GRAMMAR_EXPLANATION_SYSTEM_TEMPLATE, input.level, explanationLang),
+      user: `LEVEL: ${input.level}\nERROR:\n${JSON.stringify({ type, original, correction, explanation, rule_reference }, null, 2)}\nEXPLANATION_LANG: ${explanationLang}`,
       ...baseOpts,
     }
   }

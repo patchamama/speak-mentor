@@ -18,6 +18,7 @@ import { useOllamaActivityStore } from './stores/ollamaActivityStore'
 import { useStorageTarget } from './shared/storage/useStorageTarget'
 import { STORAGE_LABELS } from './shared/storage/resolve'
 import { getPasswordHint } from './shared/crypto/vault'
+import { useCorrectionViewStore } from './stores/correctionViewStore'
 import { cn } from './lib/utils'
 
 const STATUS_DOT: Record<OllamaStatus, { color: string; label: string }> = {
@@ -40,6 +41,8 @@ const PAGE_LABELS: Record<Page, string> = {
 export default function App() {
   const [page, setPage] = useState<Page>('correction')
   const { dark, toggle } = useThemeStore()
+  const correctionView = useCorrectionViewStore((s) => s.view)
+  const wide = page === 'correction' && correctionView === 'cards'
   useFaviconRenderer()
   // Subscribing here re-renders the whole tree when the language changes.
   const { language, setLanguage } = useLanguageStore()
@@ -132,7 +135,7 @@ export default function App() {
           <span className="text-xs text-muted-foreground">v{__APP_VERSION__}</span>
         </div>
       </header>
-      <main className="container mx-auto px-6 py-8 max-w-5xl">
+      <main className={cn('mx-auto px-6 py-8', wide ? 'w-full' : 'container max-w-5xl')}>
         <ErrorBoundary>
           <div hidden={page !== 'correction'}><CorrectionContainer /></div>
           <div hidden={page !== 'translation'}><TranslationContainer /></div>

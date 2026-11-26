@@ -314,5 +314,21 @@ export const de: Record<string, string> = {
   "Tu historial está en {repo}": "Dein Verlauf liegt in {repo}",
   "El token de GitHub se cifró con otra contraseña. Mígralo o cámbialo en Conexión y almacenamiento.": "Das GitHub-Token wurde mit einem anderen Passwort verschlüsselt. Übertrage oder ändere es unter Verbindung und Speicher.",
   "Tu token de GitHub ya está guardado, pero cifrado. Para leer tu historial introduce la clave maestra: como no se guarda, se pide en cada visita.": "Dein GitHub-Token ist bereits gespeichert, aber verschlüsselt. Gib zum Lesen deines Verlaufs das Master-Passwort ein: Da es nicht gespeichert wird, ist es bei jedem Besuch nötig.",
-  "Ir a Conexión y almacenamiento": "Zu Verbindung und Speicher"
+  "Ir a Conexión y almacenamiento": "Zu Verbindung und Speicher",
+  "Explicación generada por IA: puede contener errores. Las tablas de referencia de abajo están escritas a mano.": "KI-generierte Erklärung: Sie kann Fehler enthalten. Die Referenztabellen darunter sind von Hand geschrieben.",
+  "Reglas": "Regeln",
+  "Ejemplos": "Beispiele",
+  "Por qué": "Warum",
+  "Comparación con el español": "Vergleich mit dem Spanischen",
+  "Explicar gramática": "Grammatik erklären",
+  "Gramática: {topic}": "Grammatik: {topic}",
+  "Cerrar": "Schließen",
+  "Preparando la explicación...": "Erklärung wird vorbereitet...",
+  "Reintentar": "Erneut versuchen",
+  "Practicar más": "Mehr üben",
+  "Practicar más con ejercicios sobre:": "Mehr üben mit Übungen zu:",
+  "Todos los problemas": "Alle Probleme",
+  "Vista de los errores": "Fehleransicht",
+  "Tarjetas": "Karten",
+  "Detallada": "Detailliert"
 }

@@ -270,6 +270,7 @@ export function HistoryView({ initialTab = 'sessions', onUnlock }: HistoryViewPr
                             {t('Errores')} ({correctionData.summary.error_count})
                           </p>
                           <ErrorPanel
+                            level={detail.level}
                             errors={correctionData.errors}
                             activeIdx={activeErrorIdx}
                             onSelect={setActiveErrorIdx}

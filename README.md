@@ -31,6 +31,9 @@ Write German, get inline CEFR-aware corrections with color-coded error highlight
 | **Pipeline control** | Toggle advanced mode (all 3 passes) vs simple (correction only) per submission |
 | **Spanish and German UI** | Language selector in the header; AI explanations and the common-errors content follow it. UI text lives in `frontend/src/i18n` and tests fail on missing translations |
 | **Provider billing links** | API key, balance/top-up and usage pages for OpenAI, Anthropic and Gemini |
+| **Error views** | Full-width card grid or the detailed two-column view; the choice is remembered |
+| **Targeted practice** | One button per detected problem generates new exercises about it |
+| **Grammar explanations** | **Explicar gramática** on each grammar error: AI explanation for Spanish speakers with tables and examples, plus hand-written reference tables |
 | **Dark mode** | Persisted to `localStorage` |
 | **Keyboard shortcut** | `Cmd+Enter` / `Ctrl+Enter` to submit |
 

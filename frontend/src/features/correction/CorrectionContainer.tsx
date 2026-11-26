@@ -1,5 +1,5 @@
-import { getLanguage, msg, t } from '@/i18n'
-import { useState, useCallback, useMemo } from 'react'
+import { getLanguage, t } from '@/i18n'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -15,28 +15,12 @@ import { ErrorPanel } from './components/ErrorPanel'
 import { TipsList } from './components/TipsList'
 import { VocabularyPanel } from './components/VocabularyPanel'
 import { ExercisesPanel } from './components/ExercisesPanel'
+import { PracticeLinks } from './components/PracticeLinks'
+import { errorTypeLabel } from './errorTypes'
+import { useCorrectionViewStore } from '@/stores/correctionViewStore'
 import { PassStatusBar } from './components/PassStatusBar'
 import { useCorrectionPipeline } from './hooks/useCorrectionPipeline'
 import type { CEFRLevel, CorrectionPassId } from '@/shared/types'
-
-const ERROR_TYPE_LABELS: Record<string, string> = {
-  gender: msg('Género'),
-  case: msg('Caso'),
-  declension: msg('Declinación'),
-  conjugation: msg('Conjugación'),
-  separable_verb: msg('V. Separable'),
-  preposition: msg('Preposición'),
-  word_order: msg('Orden'),
-  spelling: msg('Ortografía'),
-  punctuation: msg('Puntuación'),
-  vocabulary: msg('Vocabulario'),
-  style: msg('Estilo'),
-  agreement: msg('Concordancia'),
-  tense: msg('Tiempo'),
-  mood: msg('Modo'),
-  voice: msg('Voz'),
-  particle: msg('Partícula'),
-}
 
 export function CorrectionContainer() {
   const { lastCorrectionLevel, pipeline } = useSettingsStore()
@@ -49,6 +33,7 @@ export function CorrectionContainer() {
   const [savedSessionId, setSavedSessionId] = useState<number | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-correction-history')
 
+  const { view, setView } = useCorrectionViewStore()
   const { state, run, isRunning, activePasses, rerunVocabulary, rerunExercises } = useCorrectionPipeline()
 
   const effectivePasses: CorrectionPassId[] = advanced ? pipeline.passes : ['correction']
@@ -132,6 +117,27 @@ export function CorrectionContainer() {
   }, [isRunning, state])
   useFaviconProgress('correction', faviconProgress)
 
+  // Bring newly requested exercises into view once they arrive.
+  const exercisesEnd = useRef<HTMLDivElement>(null)
+  const practising = useRef(false)
+  useEffect(() => {
+    if (!practising.current || state.exercises.status === 'running') return
+    practising.current = false
+    exercisesEnd.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' })
+  }, [state.exercises.status])
+
+  const practice = correctionResult && (
+    <PracticeLinks
+      errors={correctionResult.errors}
+      busy={isRunning}
+      failure={state.exercises.error}
+      onPractice={(errors) => {
+        practising.current = true
+        rerunExercises({ ...correctionResult, errors }, level, getLanguage())
+      }}
+    />
+  )
+
   return (
     <div className="space-y-6">
       {/* Input */}
@@ -184,7 +190,7 @@ export function CorrectionContainer() {
             </span>
             {advanced && pipeline.passes.length > 1 && (
               <span className="text-xs text-muted-foreground">
-                ({effectivePasses.filter(p => p !== 'correction').join(' + ')})
+                ({effectivePasses.filter(p => p !== 'correction').map(p => (p === 'vocabulary' ? t('Vocabulario') : t('Ejercicios'))).join(' + ')})
               </span>
             )}
           </label>
@@ -230,14 +236,28 @@ export function CorrectionContainer() {
                 const bg = colorClass.split(' ')[0]
                 return (
                   <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${bg}`}>
-                    {ERROR_TYPE_LABELS[type] ? t(ERROR_TYPE_LABELS[type]) : type}
+                    {errorTypeLabel(type)}
                   </span>
                 )
               })}
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="flex justify-end gap-1" role="group" aria-label={t('Vista de los errores')}>
+            {(['cards', 'detailed'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={view === option}
+                onClick={() => setView(option)}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${view === option ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'}`}
+              >
+                {option === 'cards' ? `▦ ${t('Tarjetas')}` : `☰ ${t('Detallada')}`}
+              </button>
+            ))}
+          </div>
+
+          <div className={view === 'cards' ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-6'}>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('Original con errores')}</p>
               <div className="rounded-lg border p-4">
@@ -257,6 +277,8 @@ export function CorrectionContainer() {
                 errors={correctionResult.errors}
                 activeIdx={activeErrorIdx}
                 onSelect={setActiveErrorIdx}
+                layout={view}
+                level={level}
               />
             </div>
           </div>
@@ -264,6 +286,8 @@ export function CorrectionContainer() {
           <div className="rounded-lg border p-4">
             <TipsList tips={correctionResult.tips} mainFocus={correctionResult.summary.main_focus} />
           </div>
+
+          {practice}
         </div>
       )}
 
@@ -313,6 +337,8 @@ export function CorrectionContainer() {
               </div>
             </div>
           )}
+          {state.exercisesHistory.length > 0 && state.exercises.status !== 'running' && practice}
+          <div ref={exercisesEnd} />
         </div>
       )}
     </div>

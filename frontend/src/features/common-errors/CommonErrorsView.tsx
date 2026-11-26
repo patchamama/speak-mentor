@@ -1,7 +1,8 @@
 import { getLanguage, t } from '@/i18n'
 import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import type { CommonErrorCategory, ReferenceTable } from './data/commonErrors'
+import type { CommonErrorCategory } from './data/commonErrors'
+import { RefTable } from '@/shared/ui/ReferenceTable'
 import { getCommonErrors } from './data/localize'
 import { useCommonErrorsExercises } from './hooks/useCommonErrorsExercises'
 import { CommonErrorsExercisePanel } from './components/CommonErrorsExercisePanel'
@@ -42,37 +43,6 @@ function ExampleCard({ example }: { example: CommonErrorCategory['examples'][num
           <p className="text-xs">{example.tip}</p>
         </div>
       </div>
-    </div>
-  )
-}
-
-function RefTable({ table }: { table: ReferenceTable }) {
-  return (
-    <div className="space-y-1">
-      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{table.title}</h4>
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              {table.headers.map((h, i) => (
-                <th key={i} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.rows.map((row, ri) => (
-              <tr key={ri} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                {row.map((cell, ci) => (
-                  <td key={ci} className="px-3 py-1.5 font-mono whitespace-nowrap">{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {table.note && (
-        <p className="text-xs text-muted-foreground italic">{table.note}</p>
-      )}
     </div>
   )
 }

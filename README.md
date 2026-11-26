@@ -25,6 +25,7 @@ Write German, get inline CEFR-aware corrections with color-coded error highlight
 | **History & Stats** | Paginated session history, error breakdowns by type / level / timeline, JSON export |
 | **Multi-provider LLM** | Ollama (local), Anthropic, Google Gemini, OpenAI — pick per session in Settings |
 | **Encrypted API keys** | Remote keys cifrados con PBKDF2-SHA256 + AES-GCM-256; contraseña maestra solo en memoria |
+| **Works without backend** | History and stats are stored in the browser or as a JSON file in a GitHub repository |
 | **Backend proxy** | Optional Flask `/api/llm/*` proxy keeps keys in server env vars instead of the browser |
 | **Settings** | Provider picker, model dropdown per provider, manual model override, prompt editor, per-pass pipeline, model params |
 | **Pipeline control** | Toggle advanced mode (all 3 passes) vs simple (correction only) per submission |
@@ -127,12 +128,12 @@ The frontend talks to a small `LLMProvider` interface (`chat`, `listModels`). Ea
 | [Ollama](https://ollama.com) | Browser → `localhost:11434` | No credentials. Default. Recommended model: `translategemma:12b`. |
 | [Anthropic](https://docs.anthropic.com) | Browser → `api.anthropic.com` (direct) | Uses `anthropic-dangerous-direct-browser-access: true`. Switch to backend proxy any time. |
 | [Google Gemini](https://ai.google.dev) | Browser → `generativelanguage.googleapis.com` (direct) | Key passed as `?key=` query param. Switch to backend proxy any time. |
-| [OpenAI](https://platform.openai.com) | Browser → Flask → `api.openai.com` | Always proxied — OpenAI does not send permissive CORS headers, so direct browser calls are impossible. |
+| [OpenAI](https://platform.openai.com) | Browser → `api.openai.com` (direct) | Retries without sampling params for models that reject them. Switch to backend model any time. |
 
 **Key storage**:
 - Ollama: no key, no storage.
-- Anthropic / Gemini (direct mode): API key cifrada en `localStorage` con PBKDF2-SHA256 (600k iter) + AES-GCM-256. The derived key lives only in memory for the session — closing the tab re-locks it.
-- Backend proxy mode (mandatory for OpenAI, optional for the rest): API key read from server env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`); the frontend never sees it.
+- Anthropic / Gemini / OpenAI (direct mode): API key encrypted in `localStorage` with PBKDF2-SHA256 (600k iterations) + AES-GCM-256. The derived key lives only in memory; closing the tab re-locks it.
+- Backend model (optional): the API key is read from server env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`); the frontend never sees it.
 
 **Validation**: Zod schemas with alias map for model-hallucinated error types. JSON enforced via `format: "json"` (Ollama), `response_format: {type: "json_object"}` (OpenAI), `responseMimeType: "application/json"` (Gemini), or system-prompt reinforcement (Anthropic). Auto-retry once at `temperature=0` on schema failure.
 
@@ -146,7 +147,7 @@ The frontend talks to a small `LLMProvider` interface (`chat`, `listModels`). Ea
   - **Ollama** (recommended default) — [ollama.com](https://ollama.com), then `ollama pull translategemma:12b`
   - **Anthropic** API key from [console.anthropic.com](https://console.anthropic.com)
   - **Google Gemini** API key from [aistudio.google.com](https://aistudio.google.com)
-  - **OpenAI** API key from [platform.openai.com](https://platform.openai.com) (requires the backend running)
+  - **OpenAI** API key from [platform.openai.com](https://platform.openai.com)
 
 ---
 
@@ -214,19 +215,24 @@ SQLite database is created automatically at `backend/instance/speak_mentor.db` o
 
 Open **Settings → Conexión** and pick a proveedor.
 
-**Anthropic / Gemini — direct mode (default):**
+**Direct mode (Anthropic, Gemini, OpenAI — default):**
 1. Paste your API key into the form.
 2. Pick a master password (min 6 chars) and confirm.
 3. Click **Guardar y verificar** — the app encrypts the key, calls `listModels()` to verify it works, and stores the encrypted envelope in `localStorage`.
 4. On the next session you'll see an **Unlock** panel asking for the master password. Wrong password → clear error + "Olvidar y configurar nueva" escape hatch.
 
-**OpenAI — backend proxy (mandatory):**
-1. Stop the backend, set `OPENAI_API_KEY=sk-...` in the environment, restart with `flask --app wsgi:app run --port 5001`.
-2. Pick **OpenAI** in the provider dropdown. Status shows "🔓 OpenAI listo (vía backend)".
-3. Click **Habilitar** → model dropdown loads from `/api/llm/models?provider=openai`.
+**Backend model (optional):** set the provider key in the backend environment, restart Flask, then choose **Origen del modelo → Modelo del backend**. No local key is needed.
 
-**Backend proxy for Anthropic / Gemini (optional):**
-After unlocking the provider, toggle **Usar backend proxy**. Future calls go through Flask using the server-side key; the encrypted local key remains as a fallback.
+### 7. Storage without a backend
+
+**Settings → Almacenamiento** selects where history is saved. **Automático** uses the Flask backend when it responds, otherwise GitHub when configured, otherwise this browser. Each target keeps its own history; switching does not migrate data.
+
+**GitHub storage:** create a [fine-grained token](https://github.com/settings/personal-access-tokens) limited to one repository with **Contents: Read and write**, then enter owner, repository, branch, JSON path, token and a master password. Sessions, errors and generated vocabulary and exercises are committed to that file.
+
+- Prefer a **private** repository: in a public one, anyone can read your texts. The app asks for confirmation.
+- The branch must already exist. Do not use the branch that triggers your Pages deploy, or every save redeploys the site.
+- The token is stored encrypted and must be unlocked once per session.
+- All sites under the same `<user>.github.io` origin share `localStorage`.
 
 ---
 
@@ -326,12 +332,13 @@ Settings persist in `localStorage` under `speak-mentor-settings`. Decrypted API 
 
 | Setting | Default | Description |
 |---|---|---|
+| Storage mode | `auto` | `auto` / `backend` / `github` / `browser` |
 | Active provider | `ollama` | `ollama` / `anthropic` / `gemini` / `openai` |
 | Ollama URL | `http://localhost` | Ollama host |
 | Ollama port | `11434` | Ollama port |
 | Ollama model | `translategemma:12b` | Active model (auto-detected from installed models) |
 | Keep-alive | `-1` (indefinite) | How long the model stays in VRAM after the last request |
-| Remote provider entries | `{}` | Per-provider: `{encryptedApiKey, model, baseUrl?, useBackend?}`. `encryptedApiKey` omitted for backend-only providers (OpenAI). |
+| Remote provider entries | `{}` | Per-provider: `{encryptedApiKey?, model, baseUrl?, useBackend?}` |
 | Use backend proxy | off | Per remote provider — when on, calls route through `/api/llm/*` using a server-side key |
 | Temperature | `0.2` | 0 = deterministic, 1 = creative |
 | Top P | `0.9` | Sampling diversity |
@@ -403,9 +410,9 @@ Settings persist in `localStorage` under `speak-mentor-settings`. Decrypted API 
 ## Privacy
 
 - **Ollama (default)**: 100% local. The browser calls `localhost:11434`; nothing leaves your machine.
-- **Anthropic / Gemini (direct mode)**: your input text and the corrected output transit to the provider's API. The API key never leaves your browser unencrypted — it's stored only as an AES-GCM envelope and decrypted in memory using your master password.
-- **Backend proxy mode (mandatory for OpenAI, optional for the others)**: text transits through your own Flask backend and then to the provider. The provider key lives in your server's environment, never in the browser.
-- **Sessions, errors, stats**: written only to the local SQLite file at `backend/instance/speak_mentor.db`. No analytics, no telemetry.
+- **Anthropic / Gemini / OpenAI (direct mode)**: your input text and the corrected output transit to the provider's API. The API key never leaves your browser unencrypted — it's stored only as an AES-GCM envelope and decrypted in memory using your master password.
+- **Backend model (optional)**: text transits through your own Flask backend and then to the provider. The provider key lives in your server's environment, never in the browser.
+- **Sessions, errors, stats**: written to the selected storage target — backend SQLite (`backend/instance/speak_mentor.db`), your GitHub repository, or this browser's `localStorage`. No analytics, no telemetry.
 
 ---
 

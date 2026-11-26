@@ -14,3 +14,7 @@ frontend/dist/
 .DS_Store
 *.env
 .env.local
+
+# Local tooling
+.atl/
+.playwright-mcp/

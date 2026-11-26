@@ -8,7 +8,8 @@ import {
 import { useStorageTarget } from '@/shared/storage/useStorageTarget'
 
 export function useSessionList(page = 1, mode?: string) {
-  const { ready: enabled, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
+  const enabled = ready && !locked
   return useQuery({
     queryKey: ['sessions', cacheKey, page, mode],
     queryFn: () => listSessions({ page, per_page: 20, mode }),
@@ -17,11 +18,11 @@ export function useSessionList(page = 1, mode?: string) {
 }
 
 export function useSessionDetail(id: number | null) {
-  const { ready, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
   return useQuery({
     queryKey: ['session', cacheKey, id],
     queryFn: () => getSession(id!),
-    enabled: id !== null && ready,
+    enabled: id !== null && ready && !locked,
   })
 }
 
@@ -39,21 +40,25 @@ export function useDeleteSession() {
 }
 
 export function useStatsByType() {
-  const { ready: enabled, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
+  const enabled = ready && !locked
   return useQuery({ queryKey: ['stats', cacheKey, 'by-type'], queryFn: getStatsByType, enabled })
 }
 
 export function useStatsByLevel() {
-  const { ready: enabled, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
+  const enabled = ready && !locked
   return useQuery({ queryKey: ['stats', cacheKey, 'by-level'], queryFn: getStatsByLevel, enabled })
 }
 
 export function useStatsTimeline(days = 30) {
-  const { ready: enabled, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
+  const enabled = ready && !locked
   return useQuery({ queryKey: ['stats', cacheKey, 'timeline', days], queryFn: () => getStatsTimeline(days), enabled })
 }
 
 export function useTopRules(limit = 10) {
-  const { ready: enabled, cacheKey } = useStorageTarget()
+  const { ready, locked, cacheKey } = useStorageTarget()
+  const enabled = ready && !locked
   return useQuery({ queryKey: ['stats', cacheKey, 'top-rules', limit], queryFn: () => getTopRules(limit), enabled })
 }

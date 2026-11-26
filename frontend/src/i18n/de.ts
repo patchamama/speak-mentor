@@ -310,5 +310,9 @@ export const de: Record<string, string> = {
   "Nivel CEFR": "GER-Niveau",
   "Cargando": "Wird geladen",
   "Texto original": "Originaltext",
-  "Sin modelos cargados.": "Keine Modelle geladen."
+  "Sin modelos cargados.": "Keine Modelle geladen.",
+  "Tu historial está en {repo}": "Dein Verlauf liegt in {repo}",
+  "El token de GitHub se cifró con otra contraseña. Mígralo o cámbialo en Conexión y almacenamiento.": "Das GitHub-Token wurde mit einem anderen Passwort verschlüsselt. Übertrage oder ändere es unter Verbindung und Speicher.",
+  "Tu token de GitHub ya está guardado, pero cifrado. Para leer tu historial introduce la clave maestra: como no se guarda, se pide en cada visita.": "Dein GitHub-Token ist bereits gespeichert, aber verschlüsselt. Gib zum Lesen deines Verlaufs das Master-Passwort ein: Da es nicht gespeichert wird, ist es bei jedem Besuch nötig.",
+  "Ir a Conexión y almacenamiento": "Zu Verbindung und Speicher"
 }

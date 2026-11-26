@@ -4,6 +4,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
 import { STORAGE_LABELS } from '@/shared/storage/resolve'
 import { useStorageTarget } from '@/shared/storage/useStorageTarget'
+import { LockedHistory } from './components/LockedHistory'
 import { SessionList } from './components/SessionList'
 import { ByTypeChart, ByLevelChart, TimelineChart, TopRulesTable } from './components/ErrorStatsChart'
 import { ErrorHighlight, ERROR_COLORS_MAP } from '@/features/correction/components/ErrorHighlight'
@@ -74,16 +75,17 @@ const MODE_FILTER_OPTIONS = [
 
 interface HistoryViewProps {
   initialTab?: 'sessions' | 'stats'
+  onUnlock?: () => void
 }
 
-export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
+export function HistoryView({ initialTab = 'sessions', onUnlock }: HistoryViewProps) {
   const [tab, setTab] = useState<'sessions' | 'stats'>(initialTab)
   const [page, setPage] = useState(1)
   const [modeFilter, setModeFilter] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
 
-  const { target } = useStorageTarget()
+  const { target, locked } = useStorageTarget()
   const { data, isLoading, error: listError } = useSessionList(page, modeFilter || undefined)
   const { data: detail, isLoading: detailLoading } = useSessionDetail(selectedId)
   const { mutate: deleteSession, isPending: deleting } = useDeleteSession()
@@ -118,7 +120,9 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
         </div>
       </div>
 
-      {tab === 'sessions' && (
+      {locked && <LockedHistory onUnlock={onUnlock} />}
+
+      {!locked && tab === 'sessions' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: list */}
           <div className="space-y-3">
@@ -343,7 +347,7 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
         </div>
       )}
 
-      {tab === 'stats' && (
+      {!locked && tab === 'stats' && (
         <StatsPanel />
       )}
     </div>

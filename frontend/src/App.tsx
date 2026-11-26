@@ -56,6 +56,10 @@ export default function App() {
   const vaultOpen = useVaultOpen()
   const passwordHint = getPasswordHint()
   const [connectionRequest, setConnectionRequest] = useState(0)
+  const openConnectionSettings = () => {
+    setPage('settings')
+    setConnectionRequest((n) => n + 1)
+  }
 
   const ollamaDot = ollamaBusy && ollamaStatus === 'connected'
     ? { color: 'bg-green-400 animate-pulse', label: msg('Ollama: procesando…') }
@@ -116,10 +120,7 @@ export default function App() {
           {hasSecrets && !vaultOpen && (
             <button
               type="button"
-              onClick={() => {
-                setPage('settings')
-                setConnectionRequest((n) => n + 1)
-              }}
+              onClick={openConnectionSettings}
               className="text-xs rounded-md border border-primary/40 px-2 py-1 hover:bg-muted"
             >
               🔒 {t('Desbloquear claves')}{passwordHint ? ` (…${passwordHint})` : ''}
@@ -135,7 +136,7 @@ export default function App() {
         <ErrorBoundary>
           <div hidden={page !== 'correction'}><CorrectionContainer /></div>
           <div hidden={page !== 'translation'}><TranslationContainer /></div>
-          <div hidden={page !== 'stats'}><HistoryContainer /></div>
+          <div hidden={page !== 'stats'}><HistoryContainer onUnlock={openConnectionSettings} /></div>
           <div hidden={page !== 'common-errors'}><CommonErrorsView /></div>
           <div hidden={page !== 'settings'}><SettingsContainer connectionRequest={connectionRequest} /></div>
         </ErrorBoundary>

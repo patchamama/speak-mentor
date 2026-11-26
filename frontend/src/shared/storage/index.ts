@@ -15,6 +15,10 @@ const browserStore = createDocumentStore(browserAdapter())
 // Cached so every call shares the adapter's write queue.
 let cachedGitHub: { key: string; store: SessionStore } | null = null
 
+useUnlockStore.subscribe((state) => {
+  if (state.githubToken === null) cachedGitHub = null
+})
+
 function githubStore(): SessionStore {
   const settings = useStorageStore.getState().github
   if (!settings) {
@@ -23,7 +27,7 @@ function githubStore(): SessionStore {
   const token = useUnlockStore.getState().githubToken
   // Never fall back to another target here: that would split the history.
   if (!token) {
-    throw new Error('Desbloquea el token de GitHub en Configuración → Almacenamiento.')
+    throw new Error('Introduce la contraseña maestra para desbloquear el token de GitHub.')
   }
   const { owner, repo, branch, path } = settings
   const key = JSON.stringify([owner, repo, branch, path, token])

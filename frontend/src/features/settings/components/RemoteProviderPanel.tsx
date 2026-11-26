@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useUnlockStore } from '@/stores/unlockStore'
-import { encryptSecret, decryptSecret, DecryptError } from '@/shared/crypto/secret'
+import { DecryptError, type EncryptedSecret } from '@/shared/crypto/secret'
+import { sealSecret, unlockVault } from '@/shared/crypto/vault'
+import { LockedSecret, NewSecretPassword } from '@/components/MasterPassword'
+import { useNewSecretPasswordReady } from '@/components/secretHooks'
 import { buildProvider } from '@/shared/llm/registry'
 import { DEFAULT_MODELS } from '@/shared/llm/defaults'
 import type { LLMConfig, LLMModel } from '@/shared/llm/types'
@@ -55,13 +58,12 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
     )
   }
 
-  // Entry exists but not unlocked this session → unlock form
+  // Stored key not available in memory
   if (!decryptedKey) {
     return (
-      <UnlockPanel
-        providerId={providerId}
-        label={label}
-        onUnlocked={(key) => setDecryptedKey(providerId, key)}
+      <LockedSecret
+        id={providerId}
+        name={label}
         onForget={() => {
           removeRemoteProvider(providerId)
           clearProvider(providerId)
@@ -80,7 +82,6 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
       currentModel={entry.model}
       baseUrl={entry.baseUrl}
       onChangeModel={(model) => updateRemoteProvider(providerId, { model })}
-      onLock={() => clearProvider(providerId)}
       onForget={() => {
         removeRemoteProvider(providerId)
         clearProvider(providerId)
@@ -93,7 +94,7 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
 // ── First-time setup ────────────────────────────────────────────────────────
 
 interface FirstTimePayload {
-  entry: { encryptedApiKey: ReturnType<typeof encryptSecret> extends Promise<infer T> ? T : never; model: string; baseUrl?: string }
+  entry: { encryptedApiKey: EncryptedSecret; model: string; baseUrl?: string }
   apiKey: string
 }
 
@@ -109,11 +110,12 @@ function FirstTimeSetup({
   const [apiKey, setApiKey] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const passwordReady = useNewSecretPasswordReady(password, confirm)
   const [model, setModel] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canSubmit = apiKey.trim() && password && password === confirm && password.length >= 6
+  const canSubmit = apiKey.trim() && passwordReady
 
   const handleSubmit = async () => {
     setError(null)
@@ -127,12 +129,18 @@ function FirstTimeSetup({
       const resolvedModel = model.trim() || preferred || models[0]?.name || ''
       if (!resolvedModel) throw new Error('No se encontró ningún modelo disponible')
 
-      const encryptedApiKey = await encryptSecret(apiKey.trim(), password)
+      // Opens the other stored secrets too, and rejects a password that opens none.
+      if (!useUnlockStore.getState().masterPassword) await unlockVault(password)
+      const encryptedApiKey = await sealSecret(apiKey.trim())
       onSaved({
         entry: { encryptedApiKey, model: resolvedModel },
         apiKey: apiKey.trim(),
       })
     } catch (err) {
+      if (err instanceof DecryptError) {
+        setError('La contraseña maestra no abre las claves ya guardadas.')
+        return
+      }
       const msg =
         err instanceof Error && err.message ? err.message : 'Error verificando la API key'
       setError(msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')
@@ -165,30 +173,12 @@ function FirstTimeSetup({
         />
       </Field>
 
-      <Field label="Contraseña maestra (mín 6 caracteres)" htmlFor={`${providerId}-pw`}>
-        <input
-          id={`${providerId}-pw`}
-          type="password"
-          autoComplete="new-password"
-          className={inputClass}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </Field>
-
-      <Field label="Confirmar contraseña" htmlFor={`${providerId}-pw2`}>
-        <input
-          id={`${providerId}-pw2`}
-          type="password"
-          autoComplete="new-password"
-          className={inputClass}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-        />
-        {confirm && confirm !== password && (
-          <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-        )}
-      </Field>
+      <NewSecretPassword
+        password={password}
+        confirm={confirm}
+        onPassword={setPassword}
+        onConfirm={setConfirm}
+      />
 
       <Field label="Modelo (opcional — se autodetecta si lo dejás vacío)" htmlFor={`${providerId}-model`}>
         <input
@@ -213,92 +203,6 @@ function FirstTimeSetup({
   )
 }
 
-// ── Unlock panel ────────────────────────────────────────────────────────────
-
-function UnlockPanel({
-  providerId,
-  label,
-  onUnlocked,
-  onForget,
-}: {
-  providerId: RemoteProviderId
-  label: string
-  onUnlocked: (decryptedKey: string) => void
-  onForget: () => void
-}) {
-  const entry = useSettingsStore((s) => s.remoteProviders[providerId])!
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleUnlock = async () => {
-    if (!entry.encryptedApiKey) {
-      setError('No hay key cifrada para desbloquear')
-      return
-    }
-    setError(null)
-    setBusy(true)
-    try {
-      const decrypted = await decryptSecret(entry.encryptedApiKey, password)
-      // Smoke-test that the key + provider are still valid
-      const tempConfig = buildRemoteConfig(providerId, entry.model, entry.baseUrl)
-      const provider = buildProvider(tempConfig, { apiKey: decrypted })
-      await provider.listModels()
-      onUnlocked(decrypted)
-    } catch (err) {
-      if (err instanceof DecryptError) {
-        setError('Contraseña incorrecta')
-      } else {
-        const msg = err instanceof Error ? err.message : String(err)
-        setError(
-          msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')
-            ? 'La API key guardada ya no es válida. Olvidala y configurá una nueva.'
-            : `No se pudo verificar la conexión: ${msg}`,
-        )
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-xs">
-        <p className="font-semibold">🔒 {label} bloqueado</p>
-        <p className="text-muted-foreground mt-1">
-          Ingresá la contraseña maestra para desbloquear la API key cifrada.
-        </p>
-      </div>
-
-      <Field label="Contraseña maestra" htmlFor={`${providerId}-unlock-pw`}>
-        <input
-          id={`${providerId}-unlock-pw`}
-          type="password"
-          autoComplete="current-password"
-          className={inputClass}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && password && !busy) handleUnlock()
-          }}
-        />
-      </Field>
-
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={handleUnlock} disabled={!password || busy}>
-          {busy ? <Spinner className="mr-2" /> : null}
-          Desbloquear
-        </Button>
-        <Button variant="outline" onClick={onForget}>
-          Olvidar y configurar nueva
-        </Button>
-      </div>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
-  )
-}
-
 // ── Unlocked panel ──────────────────────────────────────────────────────────
 
 function UnlockedPanel({
@@ -308,7 +212,6 @@ function UnlockedPanel({
   currentModel,
   baseUrl,
   onChangeModel,
-  onLock,
   onForget,
 }: {
   providerId: RemoteProviderId
@@ -317,7 +220,6 @@ function UnlockedPanel({
   currentModel: string
   baseUrl: string | undefined
   onChangeModel: (model: string) => void
-  onLock: () => void
   onForget: () => void
 }) {
   const [models, setModels] = useState<LLMModel[]>([])
@@ -367,14 +269,9 @@ function UnlockedPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs flex items-center justify-between gap-3">
-        <p>
-          🔓 <span className="font-semibold">{label}</span> desbloqueado · directo desde el navegador
-        </p>
-        <Button size="sm" variant="outline" onClick={onLock}>
-          Bloquear
-        </Button>
-      </div>
+      <p className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs">
+        🔓 <span className="font-semibold">{label}</span> desbloqueado · directo desde el navegador
+      </p>
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">

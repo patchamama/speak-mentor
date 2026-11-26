@@ -110,7 +110,7 @@ function FillTableCard({ exercise, index }: { exercise: FillTableExercise; index
     )
   })
 
-  const inputCells = cells.flatMap((row, _ri) => row.filter((_c, ci) => ci > 0))
+  const inputCells = cells.flatMap((row) => row.filter((_c, ci) => ci > 0))
   const correct = inputCells.filter((c) => c.status === 'correct').length
   const answered = inputCells.filter((c) => c.status !== 'neutral').length
 

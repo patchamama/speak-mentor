@@ -43,14 +43,12 @@ function describe(status: number): string {
 }
 
 function request(
-  config: GitHubConfig,
   token: string,
   fetchImpl: typeof fetch,
-  suffix: string,
+  path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const repo = `${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}`
-  return fetchImpl(`${API}/repos/${repo}${suffix}`, {
+  return fetchImpl(`${API}${path}`, {
     ...init,
     cache: 'no-store',
     headers: {
@@ -61,17 +59,99 @@ function request(
   })
 }
 
-export async function inspectRepo(
-  config: GitHubConfig,
+export const DATA_REPO = 'speak-mentor-data'
+export const DATA_PATH = 'data/speak-mentor.json'
+
+/** Accepts a user name, `@user` or a github.com profile URL. Empty means "token owner". */
+export function parseGitHubUser(input: string): string {
+  const user = input
+    .trim()
+    .replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '')
+    .replace(/^@/, '')
+    .replace(/[/?#].*$/, '')
+  const looksLikeOtherUrl = /:\/\/|\.\w+\//.test(input) && !/github\.com\//i.test(input)
+  if (looksLikeOtherUrl || (user && !/^[a-z0-9][a-z0-9-]{0,38}$/i.test(user))) {
+    throw new Error('Escribe tu usuario de GitHub o la URL de tu perfil.')
+  }
+  return user
+}
+
+interface RepoInfo {
+  private: boolean
+  default_branch: string
+  permissions?: { push?: boolean }
+}
+
+export interface DataRepo {
+  config: GitHubConfig
+  created: boolean
+  isPrivate: boolean
+}
+
+const CREATE_ERRORS: Record<number, string> = {
+  403: 'El token no tiene permiso para crear repositorios. Usa un token clásico con el scope "repo", o uno fine-grained con acceso a todos los repositorios y permisos Administration y Contents (Read and write).',
+  422: `El repositorio ${DATA_REPO} ya existe, pero el token no tiene acceso. Agrégalo a los repositorios del token.`,
+}
+
+/** Finds `speak-mentor-data` and creates it as private when missing. Never alters an existing one. */
+export async function ensureDataRepo(
   token: string,
+  userInput: string,
   fetchImpl: typeof fetch = (...args) => fetch(...args),
-): Promise<{ private: boolean; canWrite: boolean }> {
-  const repo = await request(config, token, fetchImpl, '')
-  if (!repo.ok) throw new GitHubError(describe(repo.status), repo.status)
-  const info = (await repo.json()) as { private: boolean; permissions?: { push?: boolean } }
-  const branch = await request(config, token, fetchImpl, `/branches/${encodeURIComponent(config.branch)}`)
-  if (!branch.ok) throw new GitHubError(describe(branch.status), branch.status)
-  return { private: info.private, canWrite: info.permissions?.push ?? false }
+): Promise<DataRepo> {
+  const requested = parseGitHubUser(userInput)
+  const send = (path: string, init?: RequestInit) => request(token, fetchImpl, path, init)
+
+  const me = await send('/user')
+  if (!me.ok) throw new GitHubError(describe(me.status), me.status)
+  const { login } = (await me.json()) as { login: string }
+  const owner = requested || login
+  const repoPath = `/repos/${encodeURIComponent(owner)}/${DATA_REPO}`
+
+  let response = await send(repoPath)
+  let created = false
+  if (response.status === 404) {
+    if (owner.toLowerCase() !== login.toLowerCase()) {
+      throw new Error(
+        `No se encontró ${owner}/${DATA_REPO} y el token pertenece a ${login}: solo se puede crear en esa cuenta.`,
+      )
+    }
+    response = await send('/user/repos', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: DATA_REPO,
+        description: 'Speak Mentor data',
+        private: true,
+        auto_init: true,
+      }),
+    })
+    // A fine-grained token without the permission can answer 404 as well as 403.
+    if (!response.ok) {
+      const status = response.status === 404 ? 403 : response.status
+      throw new GitHubError(CREATE_ERRORS[status] ?? describe(status), response.status)
+    }
+    created = true
+  } else if (!response.ok) {
+    throw new GitHubError(describe(response.status), response.status)
+  }
+
+  const info = (await response.json()) as RepoInfo
+  if (info.permissions?.push === false) {
+    throw new Error('El token no puede escribir en ese repositorio.')
+  }
+  if (!created) {
+    const branch = await send(`${repoPath}/branches/${encodeURIComponent(info.default_branch)}`)
+    if (branch.status === 404) {
+      throw new Error(`El repositorio ${DATA_REPO} está vacío. Agrega un README y vuelve a intentarlo.`)
+    }
+    if (!branch.ok) throw new GitHubError(describe(branch.status), branch.status)
+  }
+
+  return {
+    config: { owner, repo: DATA_REPO, branch: info.default_branch, path: DATA_PATH },
+    created,
+    isPrivate: info.private,
+  }
 }
 
 export function githubAdapter(
@@ -79,20 +159,20 @@ export function githubAdapter(
   token: string,
   fetchImpl: typeof fetch = (...args) => fetch(...args),
 ): DocumentAdapter {
+  const repoPath = `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}`
+  const send = (suffix: string, init?: RequestInit) =>
+    request(token, fetchImpl, repoPath + suffix, init)
   const filePath = config.path.split('/').filter(Boolean).map(encodeURIComponent).join('/')
 
   const load = async (): Promise<{ doc: DbDocument; sha?: string }> => {
-    const res = await request(
-      config, token, fetchImpl,
-      `/contents/${filePath}?ref=${encodeURIComponent(config.branch)}`,
-    )
+    const res = await send(`/contents/${filePath}?ref=${encodeURIComponent(config.branch)}`)
     if (res.status === 404) return { doc: emptyDocument() }
     if (!res.ok) throw new GitHubError(describe(res.status), res.status)
     let file = (await res.json()) as { sha: string; content: string; encoding: string }
     const { sha } = file
     // Files above 1 MB come without inline content; fetch the blob instead.
     if (file.encoding !== 'base64') {
-      const blob = await request(config, token, fetchImpl, `/git/blobs/${sha}`)
+      const blob = await send(`/git/blobs/${sha}`)
       if (!blob.ok) throw new GitHubError(describe(blob.status), blob.status)
       file = (await blob.json()) as typeof file
     }
@@ -111,7 +191,7 @@ export function githubAdapter(
         for (let attempt = 1; ; attempt++) {
           const { doc: current, sha } = await load()
           const { doc, result } = change(current)
-          const res = await request(config, token, fetchImpl, `/contents/${filePath}`, {
+          const res = await send(`/contents/${filePath}`, {
             method: 'PUT',
             body: JSON.stringify({
               message,

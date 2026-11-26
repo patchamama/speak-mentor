@@ -219,7 +219,7 @@ Open **Settings → Conexión** and pick a proveedor.
 1. Paste your API key into the form.
 2. Pick a master password (min 6 chars) and confirm.
 3. Click **Guardar y verificar** — the app encrypts the key, calls `listModels()` to verify it works, and stores the encrypted envelope in `localStorage`.
-4. On the next session you'll see an **Unlock** panel asking for the master password. Wrong password → clear error + "Olvidar y configurar nueva" escape hatch.
+4. On the next session, enter the master password in the top bar to unlock every stored key.
 
 **Backend model (optional):** set the provider key in the backend environment, restart Flask, then choose **Origen del modelo → Modelo del backend**. No local key is needed.
 
@@ -227,12 +227,22 @@ Open **Settings → Conexión** and pick a proveedor.
 
 **Settings → Almacenamiento** selects where history is saved. **Automático** uses the Flask backend when it responds, otherwise GitHub when configured, otherwise this browser. Each target keeps its own history; switching does not migrate data.
 
-**GitHub storage:** create a [fine-grained token](https://github.com/settings/personal-access-tokens) limited to one repository with **Contents: Read and write**, then enter owner, repository, branch, JSON path, token and a master password. Sessions, errors and generated vocabulary and exercises are committed to that file.
+**GitHub storage:** enter a token and, optionally, your user name or profile URL. The app uses the repository **`speak-mentor-data`** and creates it as **private** when it does not exist. Sessions, errors and generated vocabulary and exercises are committed to `data/speak-mentor.json` on its default branch.
 
-- Prefer a **private** repository: in a public one, anyone can read your texts. The app asks for confirmation.
-- The branch must already exist. Do not use the branch that triggers your Pages deploy, or every save redeploys the site.
-- The token is stored encrypted and must be unlocked once per session.
-- All sites under the same `<user>.github.io` origin share `localStorage`.
+| Case | Token needed |
+|---|---|
+| The app creates the repository | Classic with `repo` scope, or fine-grained with access to **All repositories** and **Administration** + **Contents** (Read and write) |
+| `speak-mentor-data` already exists | Fine-grained limited to that repository with **Contents: Read and write** (recommended) |
+
+The broader token can reach all your repositories: once the repository exists, consider replacing it with the limited one. An existing repository is never modified; if it is public, the app asks for confirmation. A repository can only be created in the token owner's account.
+
+### 8. Master password
+
+One master password encrypts the LLM API keys and the GitHub token in `localStorage`. Enter it once in the top bar to unlock all of them. It is **never stored**: it stays in memory until you reload, close the tab or press **Bloquear todo**.
+
+- There is no recovery. If you forget it, forget the stored keys and enter them again.
+- Secrets saved with a different password in 0.2.0 can be migrated from Settings.
+- All sites under the same `<user>.github.io` origin share `localStorage`, so use a long password.
 
 ---
 

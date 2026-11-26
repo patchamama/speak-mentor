@@ -43,19 +43,27 @@ describe('ErrorHighlight', () => {
     expect(onClick).toHaveBeenCalledWith(0)
   })
 
-  it('skips unreliable positions from inline highlight', () => {
-    const unreliableErrors = [
-      { ...errors[0], position: null, position_unreliable: true },
-    ]
+  it('does not highlight an error whose original is not in the text', () => {
     render(
       <ErrorHighlight
         text="Ich gehe zu der Schule."
-        errors={unreliableErrors as CorrectionResponse['errors']}
+        errors={[{ ...errors[0], original: 'bei dem', position: null }]}
         activeErrorIdx={null}
         onErrorClick={vi.fn()}
       />
     )
-    // Should not find a clickable span — whole text rendered as plain
     expect(screen.queryByTitle(/preposition/)).toBeNull()
+  })
+
+  it('locates the error by text even when the model position is wrong', () => {
+    render(
+      <ErrorHighlight
+        text="Ich gehe zu der Schule."
+        errors={[{ ...errors[0], position: { start: 0, end: 3 } }]}
+        activeErrorIdx={null}
+        onErrorClick={vi.fn()}
+      />
+    )
+    expect(screen.getByTitle(/preposition/).textContent).toBe('zu der')
   })
 })

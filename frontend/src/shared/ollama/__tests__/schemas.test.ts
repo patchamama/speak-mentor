@@ -13,15 +13,19 @@ describe('CorrectionResponseSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects invalid error type', () => {
+  it.each([
+    ['article', 'gender'],
+    ['verb_order', 'word_order'],
+    ['invalid_type', 'vocabulary'],
+  ])('normalizes the model-invented error type %s to %s', (received, expected) => {
     const result = CorrectionResponseSchema.safeParse({
       corrected: '',
       level_assessment: { detected_level: 'A1', target_level: 'A1', gap_notes: '' },
-      errors: [{ original: 'x', correction: 'y', type: 'invalid_type', severity: 'minor', explanation: 'x' }],
+      errors: [{ original: 'x', correction: 'y', type: received, severity: 'minor', explanation: 'x' }],
       summary: { error_count: 1, by_type: {}, main_focus: '' },
       tips: [],
     })
-    expect(result.success).toBe(false)
+    expect(result.success && result.data.errors[0].type).toBe(expected)
   })
 })
 

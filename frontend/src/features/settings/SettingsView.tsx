@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/Button'
 import { OllamaConnectionForm } from './components/OllamaConnectionForm'
 import { RemoteProviderSection } from './components/RemoteProviderSection'
 import { StorageSettings } from './components/StorageSettings'
+import { VaultStatus } from '@/components/MasterPassword'
 import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { LLMProviderId } from '@/shared/llm/types'
 import type { ModelParams, CorrectionPassId } from '@/shared/types'
@@ -113,6 +114,8 @@ export function SettingsView() {
   return (
     <div className="max-w-2xl space-y-6">
       <h2 className="text-lg font-semibold">Configuración</h2>
+
+      <VaultStatus />
 
       {/* Tab selector */}
       <div className="flex gap-1 border-b pb-0">

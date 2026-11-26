@@ -7,6 +7,7 @@ import { HistoryContainer } from './features/history/HistoryContainer'
 import { SettingsContainer } from './features/settings/SettingsContainer'
 import { CommonErrorsView } from './features/common-errors/CommonErrorsView'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { MasterPasswordBanner } from './components/MasterPassword'
 import { useThemeStore } from './stores/themeStore'
 import { useFaviconRenderer } from './shared/hooks/useFaviconProgress'
 import { useOllamaStartup, type OllamaStatus } from './shared/hooks/useOllamaStartup'
@@ -99,6 +100,7 @@ export default function App() {
       </header>
       <main className="container mx-auto px-6 py-8 max-w-5xl">
         <ErrorBoundary>
+          <MasterPasswordBanner />
           <div hidden={page !== 'correction'}><CorrectionContainer /></div>
           <div hidden={page !== 'translation'}><TranslationContainer /></div>
           <div hidden={page !== 'stats'}><HistoryContainer /></div>

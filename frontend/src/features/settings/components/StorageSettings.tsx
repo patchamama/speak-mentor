@@ -2,12 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
-import { decryptSecret, encryptSecret } from '@/shared/crypto/secret'
-import { inspectRepo, type GitHubConfig } from '@/shared/storage/github'
+import { DecryptError } from '@/shared/crypto/secret'
+import { sealSecret, unlockVault } from '@/shared/crypto/vault'
+import { LockedSecret, NewSecretPassword } from '@/components/MasterPassword'
+import { useNewSecretPasswordReady } from '@/components/secretHooks'
+import { DATA_REPO, ensureDataRepo } from '@/shared/storage/github'
 import { STORAGE_LABELS, type StorageMode } from '@/shared/storage/resolve'
 import { refreshHistory } from '@/shared/storage'
 import { useStorageTarget } from '@/shared/storage/useStorageTarget'
-import { useStorageStore } from '@/stores/storageStore'
+import { useStorageStore, type GitHubStorageSettings } from '@/stores/storageStore'
 import { useUnlockStore } from '@/stores/unlockStore'
 
 const inputClass =
@@ -20,20 +23,18 @@ const MODE_LABELS: Record<StorageMode, string> = {
   browser: 'Solo este navegador',
 }
 
-const FIELDS: { name: keyof GitHubConfig; label: string }[] = [
-  { name: 'owner', label: 'Propietario' },
-  { name: 'repo', label: 'Repositorio' },
-  { name: 'branch', label: 'Rama' },
-  { name: 'path', label: 'Ruta del archivo JSON' },
-]
-
-const EMPTY: GitHubConfig = { owner: '', repo: '', branch: 'main', path: 'data/speak-mentor.json' }
-
 export function StorageSettings() {
   const { mode, github, setMode, setGitHub } = useStorageStore()
   const unlocked = useUnlockStore((s) => s.githubToken !== null)
   const setToken = useUnlockStore((s) => s.setGitHubToken)
   const { target, locked } = useStorageTarget()
+
+  const forget = () => {
+    setToken(null)
+    setGitHub(null)
+    void refreshHistory()
+    toast.info('Token de GitHub olvidado')
+  }
 
   return (
     <div className="space-y-5">
@@ -74,26 +75,10 @@ export function StorageSettings() {
             {github.owner}/{github.repo} · {github.branch} · {github.path}
           </p>
           {unlocked ? (
-            <Button variant="outline" onClick={() => setToken(null)}>Bloquear</Button>
+            <Button type="button" variant="outline" onClick={forget}>Olvidar token</Button>
           ) : (
-            <UnlockForm
-              onUnlock={async (password) => {
-                setToken(await decryptSecret(github.encryptedToken, password))
-                void refreshHistory()
-              }}
-            />
+            <LockedSecret id="github" name="Token de GitHub" onForget={forget} />
           )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              setToken(null)
-              setGitHub(null)
-              void refreshHistory()
-              toast.info('Token de GitHub olvidado')
-            }}
-          >
-            Olvidar token
-          </Button>
         </div>
       )}
     </div>
@@ -103,40 +88,48 @@ export function StorageSettings() {
 function GitHubSetup({
   onSaved,
 }: {
-  onSaved: (
-    settings: GitHubConfig & { encryptedToken: Awaited<ReturnType<typeof encryptSecret>> },
-    token: string,
-  ) => void
+  onSaved: (settings: GitHubStorageSettings, token: string) => void
 }) {
-  const [config, setConfig] = useState(EMPTY)
+  const [user, setUser] = useState('')
   const [token, setTokenDraft] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [publicRepo, setPublicRepo] = useState(false)
   const [acceptPublic, setAcceptPublic] = useState(false)
-  const [isPublic, setIsPublic] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const passwordReady = useNewSecretPasswordReady(password, confirm)
 
-  const complete =
-    FIELDS.every((f) => config[f.name].trim()) && token.trim() && password.length >= 6
+  const resetWarning = () => {
+    setPublicRepo(false)
+    setAcceptPublic(false)
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      const clean = Object.fromEntries(
-        FIELDS.map((f) => [f.name, config[f.name].trim()]),
-      ) as unknown as GitHubConfig
-      const info = await inspectRepo(clean, token.trim())
-      if (!info.canWrite) throw new Error('El token no puede escribir en ese repositorio.')
-      if (!info.private && !acceptPublic) {
-        setIsPublic(true)
+      // Open the vault first, so a wrong password never leaves a half-done setup.
+      if (!useUnlockStore.getState().masterPassword) await unlockVault(password)
+      const repo = await ensureDataRepo(token.trim(), user)
+      if (!repo.isPrivate && !acceptPublic) {
+        setPublicRepo(true)
         return
       }
-      onSaved({ ...clean, encryptedToken: await encryptSecret(token.trim(), password) }, token.trim())
-      toast.success('GitHub configurado')
+      const encryptedToken = await sealSecret(token.trim())
+      onSaved({ ...repo.config, encryptedToken }, token.trim())
+      toast.success(
+        repo.created
+          ? `Repositorio privado ${repo.config.owner}/${repo.config.repo} creado`
+          : `Usando ${repo.config.owner}/${repo.config.repo}`,
+      )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo verificar el repositorio')
+      if (err instanceof DecryptError) {
+        setError('La contraseña maestra no abre las claves ya guardadas.')
+      } else {
+        setError(err instanceof Error ? err.message : 'No se pudo preparar el repositorio')
+      }
     } finally {
       setBusy(false)
     }
@@ -144,28 +137,30 @@ function GitHubSetup({
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-lg border p-4">
-      <p className="text-sm font-medium">Guardar en un repositorio de GitHub</p>
+      <p className="text-sm font-medium">Guardar en tu GitHub</p>
       <p className="text-xs text-muted-foreground">
-        Usa un token <em>fine-grained</em> limitado a un solo repositorio, con permiso Contents:
-        Read and write. Se guarda cifrado en este navegador y solo se envía a api.github.com.
-        Se recomienda un repositorio privado.
+        Se usa el repositorio <strong>{DATA_REPO}</strong>; si no existe, se crea como privado.
+        Para crearlo, el token necesita ser clásico con el scope <code>repo</code>, o fine-grained
+        con acceso a todos los repositorios y permisos Administration y Contents (Read and write).
+        Si ya creaste el repositorio, basta un token fine-grained limitado a él con Contents. El
+        token se guarda cifrado y solo se envía a api.github.com.
       </p>
 
-      {FIELDS.map((field) => (
-        <div key={field.name} className="space-y-1">
-          <label className="text-sm font-medium" htmlFor={`gh-${field.name}`}>{field.label}</label>
-          <input
-            id={`gh-${field.name}`}
-            className={inputClass}
-            value={config[field.name]}
-            onChange={(e) => {
-              setConfig((c) => ({ ...c, [field.name]: e.target.value }))
-              setIsPublic(false)
-              setAcceptPublic(false)
-            }}
-          />
-        </div>
-      ))}
+      <div className="space-y-1">
+        <label className="text-sm font-medium" htmlFor="gh-user">
+          Usuario o URL de GitHub (opcional)
+        </label>
+        <input
+          id="gh-user"
+          className={inputClass}
+          placeholder="https://github.com/tu-usuario"
+          value={user}
+          onChange={(e) => {
+            setUser(e.target.value)
+            resetWarning()
+          }}
+        />
+      </div>
 
       <div className="space-y-1">
         <label className="text-sm font-medium" htmlFor="gh-token">Token de GitHub</label>
@@ -175,71 +170,36 @@ function GitHubSetup({
           autoComplete="off"
           className={inputClass}
           value={token}
-          onChange={(e) => setTokenDraft(e.target.value)}
+          onChange={(e) => {
+            setTokenDraft(e.target.value)
+            resetWarning()
+          }}
         />
       </div>
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium" htmlFor="gh-password">
-          Contraseña maestra (mín 6 caracteres)
-        </label>
-        <input
-          id="gh-password"
-          type="password"
-          autoComplete="new-password"
-          className={inputClass}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+      <NewSecretPassword
+        password={password}
+        confirm={confirm}
+        onPassword={setPassword}
+        onConfirm={setConfirm}
+      />
 
-      {isPublic && (
+      {publicRepo && (
         <label role="alert" className="flex items-start gap-2 text-xs text-destructive">
           <input
             type="checkbox"
             checked={acceptPublic}
             onChange={(e) => setAcceptPublic(e.target.checked)}
           />
-          Este repositorio es PÚBLICO: cualquiera podrá leer tus textos y errores. Marca la casilla
-          y vuelve a guardar si lo aceptas.
+          {DATA_REPO} es PÚBLICO: cualquiera podrá leer tus textos y errores. Hazlo privado en
+          GitHub, o marca la casilla y vuelve a guardar si lo aceptas.
         </label>
       )}
 
-      <Button type="submit" disabled={!complete || busy}>
+      <Button type="submit" disabled={!token.trim() || !passwordReady || busy}>
         {busy ? <Spinner className="mr-2" /> : null}
-        Verificar y guardar
+        Conectar GitHub
       </Button>
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    </form>
-  )
-}
-
-function UnlockForm({ onUnlock }: { onUnlock: (password: string) => Promise<void> }) {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setError(null)
-    try {
-      await onUnlock(password)
-    } catch {
-      setError('Contraseña incorrecta')
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-2">
-      <label className="text-sm font-medium" htmlFor="gh-unlock">Contraseña maestra</label>
-      <input
-        id="gh-unlock"
-        type="password"
-        autoComplete="current-password"
-        className={inputClass}
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <Button type="submit" disabled={!password}>Desbloquear</Button>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </form>
   )

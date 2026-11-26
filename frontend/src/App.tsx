@@ -16,6 +16,7 @@ import { useBackendStore } from './stores/backendStore'
 import { useOllamaActivityStore } from './stores/ollamaActivityStore'
 import { useStorageTarget } from './shared/storage/useStorageTarget'
 import { STORAGE_LABELS } from './shared/storage/resolve'
+import { getPasswordHint } from './shared/crypto/vault'
 import { cn } from './lib/utils'
 
 const STATUS_DOT: Record<OllamaStatus, { color: string; label: string }> = {
@@ -47,6 +48,7 @@ export default function App() {
   const storage = useStorageTarget()
   const hasSecrets = useHasStoredSecrets()
   const vaultOpen = useVaultOpen()
+  const passwordHint = getPasswordHint()
   const [connectionRequest, setConnectionRequest] = useState(0)
 
   const ollamaDot = ollamaBusy && ollamaStatus === 'connected'
@@ -104,7 +106,7 @@ export default function App() {
               }}
               className="text-xs rounded-md border border-primary/40 px-2 py-1 hover:bg-muted"
             >
-              🔒 Desbloquear claves
+              🔒 Desbloquear claves{passwordHint ? ` (…${passwordHint})` : ''}
             </button>
           )}
           <span className="text-xs text-muted-foreground">

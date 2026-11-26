@@ -12,4 +12,4 @@ def register_routes(app):
 
     @app.get('/api/health')
     def health():
-        return {'status': 'ok', 'version': '0.4.0'}
+        return {'status': 'ok', 'version': '0.5.0'}

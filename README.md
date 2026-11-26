@@ -241,7 +241,7 @@ The broader token can reach all your repositories: once the repository exists, c
 
 ### 8. Master password
 
-One master password encrypts the LLM API keys and the GitHub token in `localStorage`. It is typed in a single place, at the top of **Settings → Conexión y almacenamiento**, and unlocks all of them; the header shows a shortcut while they are locked. It is **never stored**: it stays in memory until you reload, close the tab or press **Bloquear todo**.
+One master password encrypts the LLM API keys and the GitHub token in `localStorage`. It is typed in a single place, at the top of **Settings → Conexión y almacenamiento**, and unlocks all of them; the header shows a shortcut while they are locked. The full password is **never stored**: it stays in memory until you reload, close the tab or press **Bloquear todo**. Only its **last 3 characters** are saved in `localStorage` and shown as a reminder. This makes the password easier to guess for anyone who can read that storage, so use a long one (12 characters or more).
 
 - There is no recovery. If you forget it, forget the stored keys and enter them again.
 - Secrets saved with a different password in 0.2.0 can be migrated from Settings.

@@ -1,5 +1,6 @@
 // One master password opens every secret stored encrypted in localStorage.
-// The password and the decrypted values live only in the in-memory unlock store.
+// The password and the decrypted values live only in the in-memory unlock store;
+// the one exception is the reminder under HINT_KEY.
 import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useStorageStore } from '@/stores/storageStore'
 import { useUnlockStore } from '@/stores/unlockStore'
@@ -8,6 +9,14 @@ import { DecryptError, decryptSecret, encryptSecret, type EncryptedSecret } from
 export type SecretId = RemoteProviderId | 'github'
 
 export const MIN_PASSWORD_LENGTH = 6
+
+/** Only the last characters of the master password are persisted, as a reminder. */
+export const HINT_KEY = 'speak-mentor-password-hint'
+const HINT_LENGTH = 3
+
+export function getPasswordHint(): string | null {
+  return localStorage.getItem(HINT_KEY)
+}
 
 export function listStoredSecrets(): { id: SecretId; envelope: EncryptedSecret }[] {
   const providers = Object.entries(useSettingsStore.getState().remoteProviders).flatMap(
@@ -43,6 +52,7 @@ export async function unlockVault(password: string): Promise<{ failed: SecretId[
   results.forEach((result, i) => {
     if (result.status === 'fulfilled') keepInMemory(secrets[i].id, result.value)
   })
+  localStorage.setItem(HINT_KEY, password.slice(-HINT_LENGTH))
   useUnlockStore.getState().setMasterPassword(password)
   return { failed }
 }

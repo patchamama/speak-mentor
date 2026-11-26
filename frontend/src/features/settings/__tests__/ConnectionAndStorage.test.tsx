@@ -104,4 +104,11 @@ describe('Connection and storage settings', () => {
     await waitFor(() => expect(useUnlockStore.getState().githubToken).toBe('new-token'), { timeout: 5000 })
     expect(useStorageStore.getState().github?.encryptedToken).not.toEqual(savedGitHub.encryptedToken)
   })
+
+  it('shows the reminder next to the unlock field', () => {
+    localStorage.setItem('speak-mentor-password-hint', 'xyz')
+    useStorageStore.setState({ github: savedGitHub })
+    render(<SettingsContainer />)
+    expect(screen.getByText(/termina en/).textContent).toContain('xyz')
+  })
 })

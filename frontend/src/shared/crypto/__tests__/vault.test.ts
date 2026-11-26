@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { encryptSecret } from '../secret'
-import { listStoredSecrets, migrateSecret, sealSecret, unlockVault } from '../vault'
+import { HINT_KEY, listStoredSecrets, migrateSecret, sealSecret, unlockVault } from '../vault'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useStorageStore } from '@/stores/storageStore'
 import { useUnlockStore } from '@/stores/unlockStore'
@@ -39,6 +39,21 @@ describe('vault', () => {
     expect(storedText()).not.toContain(MASTER)
     expect(storedText()).not.toContain('sk-plain')
     expect(storedText()).not.toContain('gh-plain')
+  })
+
+  it('stores only the last 3 characters as a reminder', async () => {
+    await storeSecrets()
+    await unlockVault(MASTER)
+    expect(localStorage.getItem(HINT_KEY)).toBe(MASTER.slice(-3))
+    expect(storedText()).not.toContain(MASTER.slice(-4))
+  })
+
+  it('does not change the reminder after a wrong password', async () => {
+    await storeSecrets()
+    await unlockVault(MASTER)
+    useUnlockStore.getState().lock()
+    await expect(unlockVault('wrong-password')).rejects.toThrow()
+    expect(localStorage.getItem(HINT_KEY)).toBe(MASTER.slice(-3))
   })
 
   it('rejects a password that opens nothing', async () => {

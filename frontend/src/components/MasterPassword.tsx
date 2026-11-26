@@ -2,7 +2,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
-import { MIN_PASSWORD_LENGTH, migrateSecret, unlockVault, type SecretId } from '@/shared/crypto/vault'
+import { MIN_PASSWORD_LENGTH, getPasswordHint, migrateSecret, unlockVault, type SecretId } from '@/shared/crypto/vault'
 import { refreshHistory } from '@/shared/storage'
 import { useUnlockStore } from '@/stores/unlockStore'
 import { useHasStoredSecrets } from './secretHooks'
@@ -69,8 +69,9 @@ export function MasterPasswordSection() {
     <section aria-label="Clave maestra" className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
       <h3 className="text-sm font-semibold">Clave maestra</h3>
       <p className="text-xs text-muted-foreground">
-        Cifra tus API keys y tu token de GitHub en este navegador. Nunca se guarda: se pierde al
-        cerrar o recargar la pestaña. Ollama y el modelo del backend no la necesitan.
+        Cifra tus API keys y tu token de GitHub en este navegador. La clave completa no se guarda
+        (se pierde al cerrar o recargar la pestaña); solo sus 3 últimos caracteres, como
+        recordatorio. Usa una clave larga. Ollama y el modelo del backend no la necesitan.
       </p>
       {unlocked ? (
         <div className="flex items-center justify-between gap-3 text-sm">
@@ -97,20 +98,29 @@ export function MasterPasswordSection() {
 }
 
 function UnlockForm() {
+  const hint = getPasswordHint()
+
   return (
-    <PasswordForm
-      label="Clave maestra"
-      submitLabel="Desbloquear"
-      onSubmit={async (password) => {
-        const { failed } = await unlockVault(password)
-        void refreshHistory()
-        if (failed.length > 0) {
-          toast.warning(`Usan otra contraseña: ${failed.join(', ')}.`)
-        } else {
-          toast.success('Claves desbloqueadas')
-        }
-      }}
-    />
+    <div className="space-y-2">
+      {hint && (
+        <p className="text-sm">
+          Recordatorio: tu clave termina en <code className="bg-muted px-1 rounded">{hint}</code>
+        </p>
+      )}
+      <PasswordForm
+        label="Clave maestra"
+        submitLabel="Desbloquear"
+        onSubmit={async (password) => {
+          const { failed } = await unlockVault(password)
+          void refreshHistory()
+          if (failed.length > 0) {
+            toast.warning(`Usan otra contraseña: ${failed.join(', ')}.`)
+          } else {
+            toast.success('Claves desbloqueadas')
+          }
+        }}
+      />
+    </div>
   )
 }
 

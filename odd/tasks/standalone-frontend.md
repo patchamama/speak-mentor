@@ -11,7 +11,7 @@ Objective: run without backend, including GitHub JSON storage. Branch: feat/stan
 ## Tasks
 - T1 (S1,S4) storage layer: backend | GitHub JSON | browser; save/history/stats ungated. inline. done (RED then 16/16 GREEN)
 - T2 (S2,S3) OpenAI direct, backend/direct selector, Anthropic sampling params fix. inline. done (RED then 16/16 GREEN)
-- T3 (S5) version 0.2.0, README, merge, push, deploy, tag. inline. pending
+- T3 (S5) version 0.2.0, README, merge, push, deploy, tag. inline. done (8b8db82, 7a08f67, tag v0.2.0; Pages run 45824222781 succeeded, live bundle contains 0.2.0)
 
 ## Log
 - L1 (2026-11-26): "me gustaría que mejores el frontend para que se pueda usar sin backend en el caso de que el backend no exista y que los prompts se puedan usar usando una IA externa directamente y no desde el backend como openai, ollama, anthropic, y así que funcione bien con el deploy en gh también. Así si el backend existe y tiene un modelo de ia que se pueda seleccionar si usar el modelo del backend o directamente desde el frontend. Si se pone un token (agregar en configuración) del repo que se pueda guardar directamente en el repo en json los errores y documentos generados sin necesidad de un backend y así que funcione como si hubiera un backend."

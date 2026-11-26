@@ -2,6 +2,7 @@ import { AnthropicProvider } from './providers/anthropic'
 import { BackendProxyProvider } from './providers/backend'
 import { GeminiProvider } from './providers/gemini'
 import { OllamaProvider } from './providers/ollama'
+import { OpenAIProvider } from './providers/openai'
 import type { LLMConfig, LLMProvider, LLMProviderId } from './types'
 
 export class ProviderLockedError extends Error {
@@ -25,8 +26,9 @@ export function buildProvider(config: LLMConfig, options: BuildProviderOptions =
     case 'ollama':
       return new OllamaProvider(config)
     case 'openai':
-      // OpenAI never works direct from browser (CORS). Always proxied.
-      return new BackendProxyProvider('openai', config.model)
+      if (useBackend) return new BackendProxyProvider('openai', config.model)
+      if (!apiKey) throw new ProviderLockedError('openai')
+      return new OpenAIProvider(config, apiKey)
     case 'anthropic':
       if (useBackend) return new BackendProxyProvider('anthropic', config.model)
       if (!apiKey) throw new ProviderLockedError('anthropic')

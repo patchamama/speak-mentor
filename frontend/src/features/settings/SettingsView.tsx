@@ -4,16 +4,17 @@ import { toast } from 'sonner'
 import { useSettingsStore, DEFAULT_MODEL_PARAMS } from '@/stores/settingsStore'
 import { Button } from '@/shared/ui/Button'
 import { OllamaConnectionForm } from './components/OllamaConnectionForm'
-import { OpenAIPanel } from './components/OpenAIPanel'
-import { RemoteProviderPanel } from './components/RemoteProviderPanel'
+import { RemoteProviderSection } from './components/RemoteProviderSection'
+import { StorageSettings } from './components/StorageSettings'
 import { PROVIDER_LABELS } from '@/shared/llm/registry'
 import type { LLMProviderId } from '@/shared/llm/types'
 import type { ModelParams, CorrectionPassId } from '@/shared/types'
 
-type SettingsTab = 'connection' | 'params' | 'pipeline' | 'prompts' | 'terminal'
+type SettingsTab = 'connection' | 'storage' | 'params' | 'pipeline' | 'prompts' | 'terminal'
 
 const TAB_LABELS: Record<SettingsTab, string> = {
   connection: 'Conexión',
+  storage: 'Almacenamiento',
   params: 'Parámetros',
   pipeline: 'Pipeline',
   prompts: 'Prompts',
@@ -148,21 +149,24 @@ export function SettingsView() {
               <option value="openai">{PROVIDER_LABELS.openai}</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Ollama corre localmente sin credenciales. Anthropic y Gemini cifran tu API key con
-              una contraseña maestra. OpenAI requiere que la key viva en el backend.
+              Ollama corre localmente sin credenciales. Anthropic, Gemini y OpenAI funcionan directo
+              desde el navegador (la API key se cifra con una contraseña maestra) o con el modelo del
+              backend.
             </p>
           </div>
 
           {activeProvider === 'ollama' && <OllamaConnectionForm />}
-          {activeProvider === 'anthropic' && (
-            <RemoteProviderPanel providerId="anthropic" label={PROVIDER_LABELS.anthropic} />
+          {activeProvider !== 'ollama' && (
+            <RemoteProviderSection
+              key={activeProvider}
+              providerId={activeProvider}
+              label={PROVIDER_LABELS[activeProvider]}
+            />
           )}
-          {activeProvider === 'gemini' && (
-            <RemoteProviderPanel providerId="gemini" label={PROVIDER_LABELS.gemini} />
-          )}
-          {activeProvider === 'openai' && <OpenAIPanel />}
         </div>
       )}
+
+      {tab === 'storage' && <StorageSettings />}
 
       {/* ── Model params ────────────────────────────────────────────────────── */}
       {tab === 'params' && (

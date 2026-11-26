@@ -13,6 +13,8 @@ import { useOllamaStartup, type OllamaStatus } from './shared/hooks/useOllamaSta
 import { useBackendStatus } from './shared/hooks/useBackendStatus'
 import { useBackendStore } from './stores/backendStore'
 import { useOllamaActivityStore } from './stores/ollamaActivityStore'
+import { useStorageTarget } from './shared/storage/useStorageTarget'
+import { STORAGE_LABELS } from './shared/storage/resolve'
 import { cn } from './lib/utils'
 
 const STATUS_DOT: Record<OllamaStatus, { color: string; label: string }> = {
@@ -41,6 +43,7 @@ export default function App() {
   const backendStatus = useBackendStore((s) => s.status)
   const ollamaBusy = useOllamaActivityStore((s) => s.busy)
   const backendFetching = useIsFetching() > 0
+  const storage = useStorageTarget()
 
   const ollamaDot = ollamaBusy && ollamaStatus === 'connected'
     ? { color: 'bg-green-400 animate-pulse', label: 'Ollama: procesando…' }
@@ -88,6 +91,9 @@ export default function App() {
             aria-label={ollamaDot.label}
             className={cn('h-2 w-2 rounded-full inline-block', ollamaDot.color)}
           />
+          <span className="text-xs text-muted-foreground">
+            Datos: {STORAGE_LABELS[storage.target]}{storage.locked ? ' 🔒' : ''}
+          </span>
           <span className="text-xs text-muted-foreground">v{__APP_VERSION__}</span>
         </div>
       </header>

@@ -6,7 +6,6 @@ import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { useBackendStore } from '@/stores/backendStore'
 import { cn } from '@/lib/utils'
 import type { CEFRLevel, Lang } from '@/shared/types'
 import type { TranslationResponse } from '@/shared/ollama/schemas'
@@ -50,7 +49,6 @@ export function TranslationView({
   const [showAlternatives, setShowAlternatives] = useState(false)
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null)
   const { history, push, remove } = useInputHistory('speak-mentor-translation-history')
-  const backendStatus = useBackendStore((s) => s.status)
 
   const swap = useCallback(() => {
     setSourceLang(targetLang)
@@ -135,7 +133,7 @@ export function TranslationView({
           <Button variant="outline" onClick={handleRender} disabled={!text.trim()}>
             Renderizar
           </Button>
-          {result && !savedSessionId && backendStatus === 'available' && (
+          {result && !savedSessionId && (
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               {saving ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar'}
             </Button>

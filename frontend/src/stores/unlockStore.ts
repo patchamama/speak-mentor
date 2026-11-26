@@ -9,6 +9,9 @@ type RemoteProviderId = Exclude<LLMProviderId, 'ollama'>
 
 interface UnlockState {
   masterPassword: string | null
+  /** Decrypted GitHub storage token. Memory only. */
+  githubToken: string | null
+  setGitHubToken: (token: string | null) => void
   decryptedKeys: Partial<Record<RemoteProviderId, string>>
   setMasterPassword: (password: string | null) => void
   setDecryptedKey: (provider: RemoteProviderId, key: string) => void
@@ -19,6 +22,8 @@ interface UnlockState {
 export const useUnlockStore = create<UnlockState>((set) => ({
   masterPassword: null,
   decryptedKeys: {},
+  githubToken: null,
+  setGitHubToken: (token) => set({ githubToken: token }),
   setMasterPassword: (password) => set({ masterPassword: password }),
   setDecryptedKey: (provider, key) =>
     set((state) => ({ decryptedKeys: { ...state.decryptedKeys, [provider]: key } })),
@@ -28,5 +33,5 @@ export const useUnlockStore = create<UnlockState>((set) => ({
       delete next[provider]
       return { decryptedKeys: next }
     }),
-  lock: () => set({ masterPassword: null, decryptedKeys: {} }),
+  lock: () => set({ masterPassword: null, decryptedKeys: {}, githubToken: null }),
 }))

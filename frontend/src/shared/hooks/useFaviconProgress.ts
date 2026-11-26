@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFaviconStore } from '@/stores/faviconStore'
 
 const FAVICON_SIZE = 32
-const DEFAULT_FAVICON = '/favicon.svg'
+const DEFAULT_FAVICON = `${import.meta.env.BASE_URL}favicon.svg`
 const PROGRESS_COLOR = '#38bdf8'
 
 function getOrCreateLink(): HTMLLinkElement {

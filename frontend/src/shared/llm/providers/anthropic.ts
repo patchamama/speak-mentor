@@ -1,14 +1,17 @@
 import ky from 'ky'
 import type { BuiltPrompt } from '@/shared/ollama/promptBuilder'
 import { enqueue } from '../queue'
+import { stripCodeFence } from './json'
 import type { AnthropicProviderConfig, LLMModel, LLMProvider } from '../types'
 
 const ANTHROPIC_DEFAULT_BASE_URL = 'https://api.anthropic.com'
 const ANTHROPIC_VERSION = '2023-06-01'
-const MAX_TOKENS = 4096
+// Thinking counts against this budget on current models.
+const MAX_TOKENS = 16000
 
 interface AnthropicMessageResponse {
   content: Array<{ type: string; text?: string }>
+  stop_reason?: string
 }
 
 interface AnthropicModelsResponse {
@@ -42,13 +45,14 @@ export class AnthropicProvider implements LLMProvider {
         max_tokens: MAX_TOKENS,
         system,
         messages: [{ role: 'user', content: prompt.user }],
-        temperature: prompt.options.temperature,
-        top_p: prompt.options.top_p,
       },
       timeout: prompt.timeout,
     }).json<AnthropicMessageResponse>()
 
-    return response.content.find((c) => c.type === 'text')?.text ?? ''
+    if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') {
+      throw new Error(`Anthropic no completó la respuesta (${response.stop_reason}).`)
+    }
+    return stripCodeFence(response.content.find((c) => c.type === 'text')?.text ?? '')
   }
 
   async listModels(): Promise<LLMModel[]> {

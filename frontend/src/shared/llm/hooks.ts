@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUnlockStore } from '@/stores/unlockStore'
+import { useBackendStore } from '@/stores/backendStore'
 import {
   fetchBackendProviders,
   type BackendProviderAvailability,
@@ -45,7 +46,7 @@ export function useActiveLLMProvider(): {
     }
 
     // Backend proxy path: no local key required, key lives on the server
-    if (entry.useBackend || activeProvider === 'openai') {
+    if (entry.useBackend) {
       try {
         return {
           provider: buildProvider(config, { useBackend: true }),
@@ -72,6 +73,8 @@ export function useActiveLLMProvider(): {
   }, [activeProvider, ollama, remoteProviders, decryptedKeys])
 }
 
+const NO_BACKEND_KEYS: BackendProviderAvailability = { openai: false, anthropic: false, gemini: false }
+
 /**
  * One-shot fetch of which providers have a server-side key configured on the
  * Flask backend. Used by Settings to decide whether to enable OpenAI and to
@@ -83,11 +86,17 @@ export function useBackendProviders(): {
   error: string | null
   refetch: () => Promise<void>
 } {
+  const backendStatus = useBackendStore((s) => s.status)
   const [availability, setAvailability] = useState<BackendProviderAvailability | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refetch = async () => {
+    if (backendStatus === 'unavailable') {
+      setAvailability(NO_BACKEND_KEYS)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -95,7 +104,7 @@ export function useBackendProviders(): {
       setAvailability(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo consultar el backend')
-      setAvailability({ openai: false, anthropic: false, gemini: false })
+      setAvailability(NO_BACKEND_KEYS)
     } finally {
       setLoading(false)
     }
@@ -104,7 +113,7 @@ export function useBackendProviders(): {
   useEffect(() => {
     refetch()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [backendStatus])
 
   return { availability, loading, error, refetch }
 }

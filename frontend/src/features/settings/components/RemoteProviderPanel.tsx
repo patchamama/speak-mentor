@@ -4,7 +4,7 @@ import { useSettingsStore, type RemoteProviderId } from '@/stores/settingsStore'
 import { useUnlockStore } from '@/stores/unlockStore'
 import { encryptSecret, decryptSecret, DecryptError } from '@/shared/crypto/secret'
 import { buildProvider } from '@/shared/llm/registry'
-import { useBackendProviders } from '@/shared/llm/hooks'
+import { DEFAULT_MODELS } from '@/shared/llm/defaults'
 import type { LLMConfig, LLMModel } from '@/shared/llm/types'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -17,11 +17,17 @@ interface Props {
 const inputClass =
   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
+const KEY_PLACEHOLDERS: Record<RemoteProviderId, string> = {
+  openai: 'sk-...',
+  anthropic: 'sk-ant-...',
+  gemini: 'AIza...',
+}
+
 function buildRemoteConfig(providerId: RemoteProviderId, model: string, baseUrl: string | undefined): LLMConfig {
   if (providerId === 'anthropic') {
     return { provider: 'anthropic', apiKey: '', model, baseUrl }
   }
-  return { provider: 'gemini', apiKey: '', model, baseUrl }
+  return { provider: providerId, apiKey: '', model, baseUrl }
 }
 
 export function RemoteProviderPanel({ providerId, label }: Props) {
@@ -34,14 +40,14 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
   const setDecryptedKey = useUnlockStore((s) => s.setDecryptedKey)
   const clearProvider = useUnlockStore((s) => s.clearProvider)
 
-  // No entry yet → first-time setup form
-  if (!entry) {
+  // No local key yet → first-time setup form
+  if (!entry?.encryptedApiKey) {
     return (
       <FirstTimeSetup
         providerId={providerId}
         label={label}
         onSaved={(payload) => {
-          setRemoteProvider(providerId, payload.entry)
+          setRemoteProvider(providerId, { ...payload.entry, useBackend: false })
           setDecryptedKey(providerId, payload.apiKey)
           toast.success(`${label} configurado y verificado`)
         }}
@@ -73,9 +79,7 @@ export function RemoteProviderPanel({ providerId, label }: Props) {
       decryptedKey={decryptedKey}
       currentModel={entry.model}
       baseUrl={entry.baseUrl}
-      useBackend={entry.useBackend ?? false}
       onChangeModel={(model) => updateRemoteProvider(providerId, { model })}
-      onToggleBackend={(useBackend) => updateRemoteProvider(providerId, { useBackend })}
       onLock={() => clearProvider(providerId)}
       onForget={() => {
         removeRemoteProvider(providerId)
@@ -119,7 +123,8 @@ function FirstTimeSetup({
       const tempConfig = buildRemoteConfig(providerId, model || 'default', undefined)
       const provider = buildProvider(tempConfig, { apiKey: apiKey.trim() })
       const models = await provider.listModels()
-      const resolvedModel = model.trim() || models[0]?.name || ''
+      const preferred = models.find((m) => m.name === DEFAULT_MODELS[providerId])?.name
+      const resolvedModel = model.trim() || preferred || models[0]?.name || ''
       if (!resolvedModel) throw new Error('No se encontró ningún modelo disponible')
 
       const encryptedApiKey = await encryptSecret(apiKey.trim(), password)
@@ -156,7 +161,7 @@ function FirstTimeSetup({
           className={inputClass}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder={providerId === 'anthropic' ? 'sk-ant-...' : 'AIza...'}
+          placeholder={KEY_PLACEHOLDERS[providerId]}
         />
       </Field>
 
@@ -192,7 +197,7 @@ function FirstTimeSetup({
           className={inputClass}
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          placeholder={providerId === 'anthropic' ? 'claude-sonnet-4-5' : 'gemini-2.5-flash'}
+          placeholder={DEFAULT_MODELS[providerId]}
         />
       </Field>
 
@@ -302,9 +307,7 @@ function UnlockedPanel({
   decryptedKey,
   currentModel,
   baseUrl,
-  useBackend,
   onChangeModel,
-  onToggleBackend,
   onLock,
   onForget,
 }: {
@@ -313,15 +316,10 @@ function UnlockedPanel({
   decryptedKey: string
   currentModel: string
   baseUrl: string | undefined
-  useBackend: boolean
   onChangeModel: (model: string) => void
-  onToggleBackend: (useBackend: boolean) => void
   onLock: () => void
   onForget: () => void
 }) {
-  const { availability, loading: backendLoading } = useBackendProviders()
-  const backendHasKey = availability?.[providerId] === true
-
   const [models, setModels] = useState<LLMModel[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
   const [modelsError, setModelsError] = useState<string | null>(null)
@@ -330,9 +328,7 @@ function UnlockedPanel({
 
   const buildActiveProvider = () => {
     const config = buildRemoteConfig(providerId, currentModel, baseUrl)
-    return useBackend
-      ? buildProvider(config, { useBackend: true })
-      : buildProvider(config, { apiKey: decryptedKey })
+    return buildProvider(config, { apiKey: decryptedKey })
   }
 
   const fetchModels = async () => {
@@ -367,43 +363,18 @@ function UnlockedPanel({
     setModels([])
     void fetchModels()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useBackend])
+  }, [])
 
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs flex items-center justify-between gap-3">
         <p>
-          🔓 <span className="font-semibold">{label}</span> desbloqueado · modo:{' '}
-          <span className="font-semibold">{useBackend ? 'backend proxy' : 'directo'}</span>
+          🔓 <span className="font-semibold">{label}</span> desbloqueado · directo desde el navegador
         </p>
         <Button size="sm" variant="outline" onClick={onLock}>
           Bloquear
         </Button>
       </div>
-
-      {!backendLoading && (
-        <label
-          className={`flex items-start gap-3 rounded-md border p-3 text-xs ${
-            backendHasKey ? 'cursor-pointer hover:bg-muted/30' : 'opacity-60'
-          }`}
-        >
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-border"
-            checked={useBackend}
-            disabled={!backendHasKey}
-            onChange={(e) => onToggleBackend(e.target.checked)}
-          />
-          <div className="space-y-0.5">
-            <p className="font-semibold">Usar backend proxy</p>
-            <p className="text-muted-foreground">
-              {backendHasKey
-                ? `Las llamadas pasan por Flask con la key configurada en el backend. Tu API key local queda como fallback.`
-                : `El backend no tiene ${providerId.toUpperCase()}_API_KEY configurada. Setealo en el entorno del backend para activar.`}
-            </p>
-          </div>
-        </label>
-      )}
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">

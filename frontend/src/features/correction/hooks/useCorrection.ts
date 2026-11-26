@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { buildPrompt } from '@/shared/ollama/promptBuilder'
 import { correctText, OllamaParseError } from '@/shared/ollama/client'
-import { saveSession } from '@/shared/api/flaskClient'
+import { saveSession } from '@/shared/storage'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useActiveLLMProvider } from '@/shared/llm/hooks'
 import { PROVIDER_LABELS } from '@/shared/llm/registry'
@@ -92,8 +92,8 @@ export function useCorrection(): UseCorrectionReturn {
       })
       setSavedSessionId(session_id)
       toast.success('Sesión guardada')
-    } catch {
-      toast.error('Error al guardar la sesión')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar la sesión')
     } finally {
       setSaving(false)
     }

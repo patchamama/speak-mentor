@@ -6,7 +6,8 @@ import { LevelSelector } from '@/shared/ui/LevelSelector'
 import { InputHistory } from '@/shared/ui/InputHistory'
 import { useInputHistory } from '@/shared/hooks/useInputHistory'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { saveSession } from '@/shared/api/flaskClient'
+import { useActiveLLMProvider } from '@/shared/llm/hooks'
+import { saveSession } from '@/shared/storage'
 import { useFaviconProgress } from '@/shared/hooks/useFaviconProgress'
 import { ErrorHighlight, ERROR_COLORS_MAP } from './components/ErrorHighlight'
 import { ErrorPanel } from './components/ErrorPanel'
@@ -37,7 +38,8 @@ const ERROR_TYPE_LABELS: Record<string, string> = {
 }
 
 export function CorrectionContainer() {
-  const { lastCorrectionLevel, pipeline, ollama } = useSettingsStore()
+  const { lastCorrectionLevel, pipeline } = useSettingsStore()
+  const { config } = useActiveLLMProvider()
   const [text, setText] = useState('')
   const [level, setLevel] = useState<CEFRLevel>(lastCorrectionLevel)
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
@@ -94,7 +96,7 @@ export function CorrectionContainer() {
           vocabularyHistory: state.vocabularyHistory,
           exercisesHistory: state.exercisesHistory,
         }),
-        model: ollama.model,
+        model: config?.model,
         errors: correctionData.errors.map((e) => ({
           type: e.type,
           original: e.original,
@@ -106,12 +108,12 @@ export function CorrectionContainer() {
       })
       setSavedSessionId(session_id)
       toast.success('Sesión guardada en el historial')
-    } catch {
-      toast.error('Error al guardar la sesión')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar la sesión')
     } finally {
       setSaving(false)
     }
-  }, [state, level, text, ollama.model])
+  }, [state, level, text, config?.model])
 
   const correctionResult = state.correction.data
 

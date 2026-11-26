@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
+import { STORAGE_LABELS } from '@/shared/storage/resolve'
+import { useStorageTarget } from '@/shared/storage/useStorageTarget'
 import { SessionList } from './components/SessionList'
 import { ByTypeChart, ByLevelChart, TimelineChart, TopRulesTable } from './components/ErrorStatsChart'
 import { ErrorHighlight, ERROR_COLORS_MAP } from '@/features/correction/components/ErrorHighlight'
@@ -16,12 +18,13 @@ import type { CorrectionResponse } from '@/shared/ollama/schemas'
 import type { VocabularyResult, ExercisesResult } from '@/features/correction/hooks/useCorrectionPipeline'
 
 function StatsPanel() {
-  const { data: byType, isError: byTypeErr, isLoading: byTypeLoading } = useStatsByType()
-  const { data: byLevel, isError: byLevelErr, isLoading: byLevelLoading } = useStatsByLevel()
-  const { data: timeline, isError: timelineErr, isLoading: timelineLoading } = useStatsTimeline()
-  const { data: topRules, isError: topRulesErr, isLoading: topRulesLoading } = useTopRules()
+  const { data: byType, isError: byTypeErr, error: byTypeError, isLoading: byTypeLoading } = useStatsByType()
+  const { data: byLevel, isError: byLevelErr, error: byLevelError, isLoading: byLevelLoading } = useStatsByLevel()
+  const { data: timeline, isError: timelineErr, error: timelineError, isLoading: timelineLoading } = useStatsTimeline()
+  const { data: topRules, isError: topRulesErr, error: topRulesError, isLoading: topRulesLoading } = useTopRules()
 
   const anyError = byTypeErr || byLevelErr || timelineErr || topRulesErr
+  const error = byTypeError ?? byLevelError ?? timelineError ?? topRulesError
   const anyLoading = byTypeLoading || byLevelLoading || timelineLoading || topRulesLoading
 
   if (anyLoading) {
@@ -30,12 +33,9 @@ function StatsPanel() {
 
   if (anyError) {
     return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-2">
-        <p className="text-sm font-medium text-destructive">No se puede conectar con el backend</p>
-        <p className="text-xs text-muted-foreground">
-          Asegurate de que el servidor Flask esté corriendo en <code className="bg-muted px-1 rounded">localhost:5001</code>.
-        </p>
-        <pre className="text-xs text-muted-foreground mt-2">cd backend && flask --app wsgi:app run --port 5001</pre>
+      <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 space-y-2">
+        <p className="text-sm font-medium text-destructive">No se pudo cargar el historial</p>
+        <p className="text-xs text-muted-foreground">{error?.message}</p>
       </div>
     )
   }
@@ -82,7 +82,8 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [activeErrorIdx, setActiveErrorIdx] = useState<number | null>(null)
 
-  const { data, isLoading } = useSessionList(page, modeFilter || undefined)
+  const { target } = useStorageTarget()
+  const { data, isLoading, error: listError } = useSessionList(page, modeFilter || undefined)
   const { data: detail, isLoading: detailLoading } = useSessionDetail(selectedId)
   const { mutate: deleteSession, isPending: deleting } = useDeleteSession()
 
@@ -99,7 +100,10 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-semibold">Historial</h2>
+        <div>
+          <h2 className="text-lg font-semibold">Historial</h2>
+          <p className="text-xs text-muted-foreground">Datos guardados en: {STORAGE_LABELS[target]}</p>
+        </div>
         <div className="flex gap-1">
           {(['sessions', 'stats'] as const).map((t) => (
             <button
@@ -131,6 +135,10 @@ export function HistoryView({ initialTab = 'sessions' }: HistoryViewProps) {
                 Exportar JSON
               </Button>
             </div>
+
+            {listError && (
+              <p role="alert" className="text-sm text-destructive">{listError.message}</p>
+            )}
 
             {isLoading ? (
               <div className="flex justify-center p-8"><Spinner /></div>

@@ -11,6 +11,7 @@ Supported providers:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import requests
@@ -144,6 +145,11 @@ def _chat_openai(api_key: str, payload: dict[str, Any], timeout: int) -> str:
     return res.json()['choices'][0]['message']['content']
 
 
+def _strip_code_fence(text: str) -> str:
+    fenced = re.fullmatch(r'```(?:json)?\s*(.*?)\s*```', text.strip(), re.S | re.I)
+    return fenced.group(1) if fenced else text
+
+
 def _chat_anthropic(api_key: str, payload: dict[str, Any], timeout: int) -> str:
     res = requests.post(
         'https://api.anthropic.com/v1/messages',
@@ -154,12 +160,10 @@ def _chat_anthropic(api_key: str, payload: dict[str, Any], timeout: int) -> str:
         },
         json={
             'model': payload['model'],
-            'max_tokens': 4096,
+            'max_tokens': 16000,
             'system': payload['system']
             + '\n\nReturn a single valid JSON object. No prose outside JSON.',
             'messages': [{'role': 'user', 'content': payload['user']}],
-            'temperature': payload['options']['temperature'],
-            'top_p': payload['options']['top_p'],
         },
         timeout=timeout,
     )
@@ -167,7 +171,7 @@ def _chat_anthropic(api_key: str, payload: dict[str, Any], timeout: int) -> str:
     body = res.json()
     for block in body.get('content', []):
         if block.get('type') == 'text':
-            return block.get('text', '')
+            return _strip_code_fence(block.get('text', ''))
     return ''
 
 

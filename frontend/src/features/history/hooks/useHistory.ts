@@ -3,28 +3,24 @@ import { toast } from 'sonner'
 import {
   listSessions, getSession, deleteSession,
   getStatsByType, getStatsByLevel, getStatsTimeline, getTopRules,
-} from '@/shared/api/flaskClient'
-import { useBackendStore } from '@/stores/backendStore'
-
-function useBackendEnabled() {
-  return useBackendStore((s) => s.status === 'available')
-}
+} from '@/shared/storage'
+import { useStorageTarget } from '@/shared/storage/useStorageTarget'
 
 export function useSessionList(page = 1, mode?: string) {
-  const enabled = useBackendEnabled()
+  const { ready: enabled, cacheKey } = useStorageTarget()
   return useQuery({
-    queryKey: ['sessions', page, mode],
+    queryKey: ['sessions', cacheKey, page, mode],
     queryFn: () => listSessions({ page, per_page: 20, mode }),
     enabled,
   })
 }
 
 export function useSessionDetail(id: number | null) {
-  const backendEnabled = useBackendEnabled()
+  const { ready, cacheKey } = useStorageTarget()
   return useQuery({
-    queryKey: ['session', id],
+    queryKey: ['session', cacheKey, id],
     queryFn: () => getSession(id!),
-    enabled: id !== null && backendEnabled,
+    enabled: id !== null && ready,
   })
 }
 
@@ -34,28 +30,29 @@ export function useDeleteSession() {
     mutationFn: (id: number) => deleteSession(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessions'] })
+      qc.invalidateQueries({ queryKey: ['stats'] })
       toast.success('Sesión eliminada')
     },
-    onError: () => toast.error('Error al eliminar la sesión'),
+    onError: (err) => toast.error(err.message || 'Error al eliminar la sesión'),
   })
 }
 
 export function useStatsByType() {
-  const enabled = useBackendEnabled()
-  return useQuery({ queryKey: ['stats', 'by-type'], queryFn: getStatsByType, enabled })
+  const { ready: enabled, cacheKey } = useStorageTarget()
+  return useQuery({ queryKey: ['stats', cacheKey, 'by-type'], queryFn: getStatsByType, enabled })
 }
 
 export function useStatsByLevel() {
-  const enabled = useBackendEnabled()
-  return useQuery({ queryKey: ['stats', 'by-level'], queryFn: getStatsByLevel, enabled })
+  const { ready: enabled, cacheKey } = useStorageTarget()
+  return useQuery({ queryKey: ['stats', cacheKey, 'by-level'], queryFn: getStatsByLevel, enabled })
 }
 
 export function useStatsTimeline(days = 30) {
-  const enabled = useBackendEnabled()
-  return useQuery({ queryKey: ['stats', 'timeline', days], queryFn: () => getStatsTimeline(days), enabled })
+  const { ready: enabled, cacheKey } = useStorageTarget()
+  return useQuery({ queryKey: ['stats', cacheKey, 'timeline', days], queryFn: () => getStatsTimeline(days), enabled })
 }
 
 export function useTopRules(limit = 10) {
-  const enabled = useBackendEnabled()
-  return useQuery({ queryKey: ['stats', 'top-rules', limit], queryFn: () => getTopRules(limit), enabled })
+  const { ready: enabled, cacheKey } = useStorageTarget()
+  return useQuery({ queryKey: ['stats', cacheKey, 'top-rules', limit], queryFn: () => getTopRules(limit), enabled })
 }
